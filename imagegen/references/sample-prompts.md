@@ -1,6 +1,6 @@
 # Example prompts
 
-Adapt examples to the request. These are prompt text for the bundled CLI, not a separate image-generation tool.
+Adapt examples to the request. These are prompt text for the imagegen CLI, not a separate image-generation tool.
 
 ## Product photograph
 

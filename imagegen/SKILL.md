@@ -1,44 +1,45 @@
 ---
 name: imagegen
-description: Generate and edit raster images through APIMart, and compare its image models and current prices. Use for image creation, reference-based variations, image editing, or APIMart image model selection. Prefer existing SVG or code assets when the requested change is native to those formats.
+description: Generate and edit raster images with the imagegen CLI through APIMart, manage local generation defaults, and compare available image models and prices. Use for image creation, reference-based edits, transparency or APIMart model selection; prefer existing vector or code assets for edits native to those formats.
 license: Apache-2.0; see LICENSE.txt
 metadata:
   author: okooo5km(十里)
-  version: "1.0.0"
+  version: "2.0.0"
 ---
 
-# APIMart Imagegen
+# Imagegen
 
-Use the bundled `scripts/image_gen.py` to generate/edit images and inspect models/prices. Resolve this script relative to this `SKILL.md`, then invoke its **absolute path** from the user's workspace so outputs belong to their project. Choose an available Python 3.10+ interpreter (`python3` on macOS/Linux; `py -3` or `python` on Windows). Quote paths containing spaces. No Bash, curl, Node.js, SDK or virtual environment is required for API operations.
+Use the native Rust **imagegen** CLI. It does not require Python, Node.js, Rust, an SDK or an image-processing runtime on the user's machine. The host must support running local commands and accessing APIMart over HTTPS.
 
-## Setup and model choice
+## Installation and configuration
 
-- Run `check-key` to check local configuration. It does not authenticate or charge the account.
-- If missing, read [references/setup.md](references/setup.md) and show its registration link and `configure --key` command. The user enters their key in their terminal; do not ask them to paste it into chat. Never print a key or put it in a project file.
-- The built-in default is **gpt-image-2.5-flare**, 1K, medium quality, one image. An explicit `--model` overrides `APIMART_IMAGE_MODEL`, then the saved default. `auto` uses that same precedence; it never tries multiple models.
-- `models` lists runnable profiles offline. `models --live --prices --json` fetches account-visible image models and public prices. `prices --model MODEL --json` needs no key. Read [references/models-and-pricing.md](references/models-and-pricing.md) when comparing costs or selecting a default. Preserve user model choices; change a saved default only when requested.
+Run `imagegen --version` and `imagegen doctor`. If unavailable, follow [references/setup.md](references/setup.md) to install the matching prebuilt binary; do not try the removed Python scripts. Installers verify archive SHA-256 checksums. If a new PATH entry is not visible in this session, invoke the installed binary by absolute path: `~/.local/bin/imagegen` on macOS/Linux, `%LOCALAPPDATA%\imagegen\bin\imagegen.exe` on Windows. Expand these locations for the actual shell.
 
-## Generate or edit
+Run from the user's project directory so relative outputs belong to the project. Quote paths containing spaces. Use `--prompt-file` for multiline or complex prompts.
+
+`imagegen auth status` checks local key presence. If missing, show the APIMart registration/key links and `imagegen auth set` from the setup reference. The user enters the key in their terminal; never request it in chat or place it in project files.
+
+Read `imagegen config show` before assuming defaults. The built-in model is **gpt-image-2.5-flare**, 1K, medium quality, one image. Explicit CLI options override saved defaults; `APIMART_IMAGE_MODEL` sits between an explicit model and the saved model. Change persistent defaults only when the user requests it. See [references/configuration.md](references/configuration.md) for size/ratio precedence, supported defaults and migration.
+
+## Generate and edit
 
 ```text
-python "<absolute-skill-path>/scripts/image_gen.py" generate --prompt "A ceramic teapot, studio photograph" --size 16:9 --resolution 2k --out "output/teapot.png"
-python "<absolute-skill-path>/scripts/image_gen.py" edit --image "product.png" --prompt "Change only the background to warm gray; preserve the product and its lettering" --out "output/product-edited.png"
+imagegen generate --prompt "A ceramic teapot in soft studio light" --aspect-ratio 16:9 --resolution 2k --out output/teapot.png
+imagegen edit --image "product photo.png" --prompt "Change only the background to warm gray; preserve the product and lettering" --out output/product-edited.png
 ```
 
-Use `--prompt-file` for long prompts, quotes or multiline text. Preserve requested wording and editing invariants. Read [references/prompting.md](references/prompting.md) for substantial prompt development, or [references/sample-prompts.md](references/sample-prompts.md) for relevant examples; neither is required for every request.
+Local references upload to APIMart as temporary public URLs before generation; use only authorized input images. GPT Image 2.5 accepts up to 16 references. Edits preserve the input proportions by default, ignoring saved size/aspect ratio. An explicit `--size`, `--aspect-ratio`, or `--use-default-size` changes that behavior. `--size` takes **exact pixels or auto**, not a ratio.
 
-Local references upload to APIMart and become temporary public URLs before generation. Use only user-authorized inputs. Repeat `--image` for references; GPT Image 2.5 accepts up to 16. Editing omits size by default so the service can preserve input aspect ratio. An explicit `--size` overrides that behavior.
+`--dry-run` validates without a key, HTTP calls, uploads or output directory creation. Unsupported parameters fail locally; no silent model switch or parameter removal. Prompt guidance: [references/prompting.md](references/prompting.md). Examples: [references/sample-prompts.md](references/sample-prompts.md).
 
-GPT Image 2.5 supports native transparency: use `--background transparent --output-format png` (or WebP). Inspect the actual alpha channel and edges. Use [references/chroma-key.md](references/chroma-key.md) only for existing keyed images or when a chroma-key workflow is appropriate. Masks are supported by the bundled `gpt-image-2-official` profile, not the documented 2.5 endpoint.
+Use `--background transparent --output-format png` (or WebP) for native GPT Image 2.5 transparency. Inspect alpha and edges. The optional local `remove-chroma-key` command is also native Rust; read [references/chroma-key.md](references/chroma-key.md) when needed. Masks require the `gpt-image-2-official` profile and are validated locally/in memory.
 
-`--dry-run` validates and previews a request without a key, upload, network call or output directory creation. Unsupported model parameters fail locally rather than disappearing silently.
+## Models, batches and recovery
 
-For distinct prompts, use `generate-batch --input jobs.jsonl --out-dir output/images`; read [references/cli.md](references/cli.md) for batch format, recovery and examples. Validate with `--dry-run` first. Default concurrency is two; each job incurs its own charge.
+`imagegen models` lists runnable profiles offline. `models --live --prices --json` queries account-visible image models and public prices. Discovery-only models cannot be generated until a verified profile is implemented. `prices --model MODEL --json` needs no key. Read [references/models-and-pricing.md](references/models-and-pricing.md) for rate units and billing limits.
 
-## Completion and recovery
+For distinct prompts, use `batch --input jobs.jsonl --out-dir output/images`, with `--dry-run` first. Read [references/cli.md](references/cli.md) for JSONL format and recovery. Saved defaults apply to every job unless overridden; default concurrency is two and every submitted job can incur a charge.
 
-Report the model and absolute saved paths. Inspect the image for subject, composition, text and requested invariants before declaring the visual complete. Respect user scope when considering another paid iteration.
+The CLI prints a task ID and records output paths after submission. It never retries a paid submission. On timeout or download failure, run `imagegen fetch TASK_ID`; local receipts restore the original output paths/count. On another machine, pass `--out`/`--out-dir` and `--n`. If submission fails without an ID, check APIMart history before retrying. Resume only unfinished work, not an entire successful batch.
 
-The CLI prints a task ID and saves a receipt outside the project after submission. It never retries a paid submission or switches models automatically. If polling or downloading fails, resume with `fetch TASK_ID --out path.png` (supply `--n` for multiple images). If submission fails without a task ID, check APIMart task history before retrying. Downloads must be saved before temporary URLs expire.
-
-Existing outputs are refused unless `--force` was requested. Keep successful batch outputs and resume only unfinished tasks; do not blindly repeat a batch.
+Report the model and absolute saved paths. Inspect subject, text, composition and requested invariants before declaring the visual complete. Existing files are protected unless replacement via `--force` is intended. Further paid iterations must stay within the user's scope.

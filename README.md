@@ -1,148 +1,185 @@
-# APIMart Imagegen
+# Imagegen
 
-[![Cross-platform validation](https://github.com/okooo5km/apimart-imagegen/actions/workflows/ci.yml/badge.svg)](https://github.com/okooo5km/apimart-imagegen/actions/workflows/ci.yml)
-[![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
-[![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
+[![Rust build, test and install](https://github.com/okooo5km/imagegen/actions/workflows/ci.yml/badge.svg)](https://github.com/okooo5km/imagegen/actions/workflows/ci.yml)
+[![Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
+[![Rust](https://img.shields.io/badge/Rust-2024-orange)](Cargo.toml)
 
-**让 AI Agent 调用 APIMART 生图、编辑图片、查询模型与实时价格。macOS / Linux / Windows，核心功能零第三方依赖。**
+**一个原生 Rust 生图 CLI，一份标准 Agent Skill。安装可执行文件后，即可通过 APIMART 生成、编辑图片、管理默认参数、查询模型与价格。**
 
 中文 · [English](README.en.md)
 
-默认使用 **`gpt-image-2.5-flare`**，同时支持 **`gpt-image-2.5-sunburst`**。它既是符合 [Agent Skills 标准](https://agentskills.io/specification) 的技能，也是可以单独运行的 Python CLI。
+默认 **gpt-image-2.5-flare**，支持 **gpt-image-2.5-sunburst**。覆盖 macOS、Linux、Windows 的 x64 与 ARM64；运行时无需 Python、Node.js、Rust 编译器、Pillow 或 OpenSSL。
 
-作者：**okooo5km(十里)**。更多创作技能、YouMind 上架作品与使用入口：[sink.5km.tech/skills](https://sink.5km.tech/skills)。
+作者：**okooo5km(十里)**。更多创作技能与 YouMind 作品：[sink.5km.tech/skills](https://sink.5km.tech/skills)。
 
-## 能做什么
+## 1. 安装 CLI
 
-- 文生图、参考图变体、图片编辑、原生透明背景。
-- 本地图片上传、异步任务轮询、结果下载与超时恢复。
-- 查询账号可见的生图模型、参数元数据与公开价格。
-- 保存默认模型；单次请求仍可指定其他模型。
-- JSONL 批量生成，先验证全部任务，再限量并发执行。
-- 密钥在本机终端隐藏输入，保存在项目之外。
-
-不会自动换模型或重复提交付费任务。遇到不支持的参数会报错，避免参数被丢弃后仍然扣费。
-
-## 安装技能
-
-已有 Node.js/npm 的用户可以使用 [skills CLI](https://github.com/vercel-labs/skills)：
+### macOS / Linux
 
 ```sh
-npx skills add okooo5km/apimart-imagegen --skill imagegen
+curl --proto '=https' --tlsv1.2 -fLsS https://github.com/okooo5km/imagegen/releases/download/v2.0.0/install.sh -o /tmp/imagegen-install.sh
+sh /tmp/imagegen-install.sh
+export PATH="$HOME/.local/bin:$PATH"
+imagegen --version
 ```
 
-选择你的 Agent 和安装范围。运行技能只需要 **Python 3.10+**，不需要 Node.js。若已安装同名 `imagegen` 技能，先确认要保留哪个版本；本项目不是对所有同名技能的无条件替换。
+安装到 `~/.local/bin`，不需要 sudo。将最后的 PATH 配置加入自己的 shell 配置文件后，新终端也能使用；安装器不会修改 shell 配置文件。Agent 也可以立即使用绝对路径 `~/.local/bin/imagegen`。
 
-也可以克隆后，将仓库中的 **整个 `imagegen/` 目录**复制到 Agent 支持的技能目录：
+### Windows PowerShell
+
+```powershell
+Invoke-WebRequest https://github.com/okooo5km/imagegen/releases/download/v2.0.0/install.ps1 -OutFile "$env:TEMP\imagegen-install.ps1"
+powershell -NoProfile -ExecutionPolicy Bypass -File "$env:TEMP\imagegen-install.ps1"
+$env:Path = "$env:LOCALAPPDATA\imagegen\bin;$env:Path"
+imagegen --version
+```
+
+安装到 `%LOCALAPPDATA%\imagegen\bin`，加入用户 PATH，无需管理员权限。上面的 PATH 赋值同时更新当前终端。
+
+安装器会识别架构、下载对应压缩包、验证 SHA-256，然后替换可执行文件。校验失败不会覆盖已有安装。只用到系统下载、解压和校验工具。
+
+| 平台 | 发布目标 |
+| --- | --- |
+| macOS Apple Silicon | aarch64-apple-darwin |
+| macOS Intel | x86_64-apple-darwin |
+| Linux x64 | x86_64-unknown-linux-musl |
+| Linux ARM64 | aarch64-unknown-linux-musl |
+| Windows x64 | x86_64-pc-windows-msvc |
+| Windows ARM64 | aarch64-pc-windows-msvc |
+
+Linux 使用静态 musl；Windows 静态链接 C 运行库。macOS 包带 ad-hoc 签名，未做 Apple Developer ID 公证；Windows 包未做 Authenticode 签名。企业设备的执行策略仍然有效。当前平台覆盖以 [CI 实际结果](https://github.com/okooo5km/imagegen/actions/workflows/ci.yml) 为准，不包含 32 位系统。
+
+也可以从 [Releases](https://github.com/okooo5km/imagegen/releases/latest) 手动下载压缩包和 `.sha256`，校验后解压可执行文件到 PATH。安装器支持 `IMAGEGEN_INSTALL_DIR`、`IMAGEGEN_VERSION`；离线安装可用 `IMAGEGEN_ARCHIVE_DIR` 指定存放压缩包和校验文件的目录。
+
+## 2. 安装技能
+
+CLI 可以独立使用。要让 Agent 使用它，安装标准 `imagegen` Skill：
 
 ```sh
-git clone https://github.com/okooo5km/apimart-imagegen.git
+npx skills add okooo5km/imagegen --skill imagegen
 ```
 
-不要只复制 `SKILL.md`，它需要相邻的 scripts 和 references。技能入口是 `imagegen/SKILL.md`；仓库根目录负责 README、测试和 CI。
+这条可选安装命令需要 Node.js；**CLI 本身不需要**。不想安装 Node.js，可以下载 Release 的 `imagegen-skill.zip`，把整个 `imagegen/` 文件夹放进 Agent 的技能目录。同名技能已存在时，先确认是否替换。
 
-安装后可以这样说：
+技能会检查 CLI 是否安装、引导密钥设置，然后调用 `imagegen`。Agent 需要能读取技能、运行本地命令、访问网络。
 
 ```text
-使用 imagegen，为这篇文章生成一张 16:9 的封面，保存到项目的 output 目录。
+使用 imagegen，把默认比例设为 16:9、分辨率设为 2K，然后为这篇文章生成封面。
 使用 imagegen，比较 Flare 和 Sunburst 当前价格，先不要生成图片。
 ```
 
-支持 `$` 调用的 Agent 也可以使用 `$imagegen`。宿主需要具备读取技能、运行 Python 和联网的能力；仅能聊天的界面不能执行本技能。
+## 3. 配置密钥
 
-## 配置 APIMART 密钥
+在 [APIMART 官网](https://apimart.ai) 注册，在 [API Key 页面](https://apimart.ai/keys) 创建密钥，并确保账号有可用额度。作者的邀请链接申请中，当前先使用官网。
 
-1. 在 [APIMART 官网](https://apimart.ai) 注册账号。
-2. 在 [API Key 页面](https://apimart.ai/keys) 创建密钥，并确保账号有可用额度。
-3. 在自己的终端运行配置命令，输入密钥；**不要将密钥发到聊天里**。
-
-下面的示例都从克隆的仓库根目录运行。安装到 Agent 后，应将脚本路径换成安装位置的绝对路径。
-
-**macOS / Linux**
+在自己的终端运行：
 
 ```sh
-python3 imagegen/scripts/image_gen.py configure --key
-python3 imagegen/scripts/image_gen.py check-key
+imagegen auth set
+imagegen auth status
+imagegen doctor
 ```
 
-**Windows PowerShell**
-
-```powershell
-py -3 imagegen/scripts/image_gen.py configure --key
-py -3 imagegen/scripts/image_gen.py check-key
-```
-
-如果没有 `py`，使用已加入 PATH 的 `python`。确认 `python --version` 至少为 3.10。隐藏输入时终端不会显示密钥字符，这是正常行为。
-
-密钥优先从环境变量 `APIMART_API_KEY` 读取，其次是本机配置文件：
+密钥输入不可见，保存在项目之外。不要将密钥发到聊天里。`auth status` 只检查本地配置，不检查授权或余额。CI 可通过 secret 环境变量 `APIMART_API_KEY` 提供密钥，CLI 不自动读取项目 `.env`。
 
 | 平台 | 配置目录 |
 | --- | --- |
-| macOS / Linux | `$XDG_CONFIG_HOME/imagegen`；未设置时为 `~/.config/imagegen` |
+| macOS / Linux | `$XDG_CONFIG_HOME/imagegen`，否则 `~/.config/imagegen` |
 | Windows | `%APPDATA%\imagegen` |
-| 所有平台 | 可用 `IMAGEGEN_CONFIG_DIR` 指定其他目录 |
+| 覆盖 | `IMAGEGEN_CONFIG_DIR` |
 
-兼容旧技能的 `~/.config/imagegen/apimart.key`。文件支持 UTF-8 BOM 与 CRLF。Unix 密钥文件权限为 600，Windows 使用用户目录的访问控制。`check-key` 只检查本地配置，不验证余额或远程授权。CI 中通过 secret 环境变量提供密钥；CLI 不会自动读取项目 `.env`。
+密钥保存在 `apimart.key`，默认参数保存在 `config.toml`。配置写入采用原子替换；Unix 文件权限为 600，Windows 使用用户目录的访问控制。
 
-## 先看模型和价格
-
-以下命令中的 `python` 可替换为 `python3` 或 `py -3`：
+## 保存自己的默认参数
 
 ```sh
-python imagegen/scripts/image_gen.py models
-python imagegen/scripts/image_gen.py models --prices
-python imagegen/scripts/image_gen.py models --live --prices --json
-python imagegen/scripts/image_gen.py prices --model gpt-image-2.5-flare --json
+imagegen config set model gpt-image-2.5-flare
+imagegen config set aspect_ratio 16:9
+imagegen config set resolution 2k
+imagegen config set quality high
+imagegen config set output_format png
+imagegen config set n 1
+imagegen config show
 ```
 
-- `models`：离线列出已适配、可生成的模型。
-- `--live`：读取当前 API Key 可见的生图模型和参数，需要密钥。
-- `prices` / `--prices`：实时读取公开价格，不需要密钥。
-- `runnable`：CLI 已适配；`discovery only`：平台可发现，CLI 尚无经过验证的生成参数配置。
+之后只需要提示词：
 
-| 已适配模型 | 用途 | 每次图片数 |
+```sh
+imagegen generate --prompt "A ceramic teapot in soft studio light" --out output/teapot.png
+```
+
+临时改成正方形，不影响保存的默认值：
+
+```sh
+imagegen generate --prompt "A paper fox" --aspect-ratio 1:1 --out output/fox.png
+```
+
+比例、尺寸、分辨率各管一件事：
+
+| 设置 | 示例 | 作用 |
 | --- | --- | --- |
-| **gpt-image-2.5-flare** | 默认；日常生图与编辑 | 1–4 |
+| aspect_ratio | 16:9 | 输出画面的比例 |
+| size | 1600x1200 | 精确像素尺寸，优先于保存的比例和分辨率 |
+| resolution | 1k / 2k / 4k | 配合比例选择像素档位 |
+
+```sh
+imagegen config set size 1600x1200
+imagegen config unset size
+imagegen config path
+imagegen config reset
+```
+
+`reset` 清空默认选项，但保留密钥。命令行参数覆盖本地默认值；显式 `--aspect-ratio` 或 `--resolution` 会覆盖保存的精确尺寸。显式 `--size` 不与比例/分辨率同时使用。
+
+还支持保存 `background`、`concurrency`、`timeout`、`poll_interval`。内置默认值是 Flare、1:1、1K、medium、1 张、并发 2。模型优先级为 `--model` > `APIMART_IMAGE_MODEL` > 本地配置 > Flare。`auto` 不代表自动换模型。[完整配置规则](imagegen/references/configuration.md)
+
+## 生图、编辑、透明背景
+
+```sh
+imagegen generate --prompt-file prompt.txt --aspect-ratio 16:9 --resolution 2k --out output/hero.png
+imagegen edit --model gpt-image-2.5-sunburst --image "photos/my product.png" --prompt "Change only the background to warm gray; preserve the product and lettering" --out output/product.png
+imagegen generate --prompt "A folded paper fox, complete subject" --background transparent --output-format png --out output/fox.png
+imagegen generate --prompt "A ceramic mug" --size 1600x1200 --dry-run
+```
+
+`--dry-run` 不需要密钥、不联网、不上传、不创建输出目录。长提示词和复杂引号用 UTF-8 的 `--prompt-file`；BOM、CRLF、中文与空格路径均受测试覆盖。
+
+编辑默认保留输入比例，不套用保存的比例/精确尺寸。显式传入尺寸参数，或加 `--use-default-size`，才会改变这一点。重复 `--image` 可传多张参考图，GPT Image 2.5 最多 16 张。
+
+本地 PNG/JPEG/WebP/GIF 图片先上传到 APIMART，得到临时**公开 URL**再生成；单文件上限 20 MiB。不要上传无权分享的素材。结果会下载到本机，避免依赖即将过期的链接。图片内容、文字和透明通道仍需检查。
+
+已存在的文件不会被覆盖，除非传入 `--force`。不支持的参数会在提交前报错，不会静默丢弃。
+
+已有绿幕图片也能本地处理，不需要 Pillow：
+
+```sh
+imagegen remove-chroma-key --input keyed.png --out transparent.png --key 00ff00 --despill
+```
+
+## 模型与实时价格
+
+```sh
+imagegen models
+imagegen models --prices
+imagegen models --live --prices --json
+imagegen prices --model gpt-image-2.5-flare --json
+```
+
+| 已适配模型 | 用途 | 单次图片数 |
+| --- | --- | --- |
+| **gpt-image-2.5-flare** | 默认；日常生图和编辑 | 1–4 |
 | **gpt-image-2.5-sunburst** | 注重编辑精度 | 1–4 |
 | gpt-image-2 | 旧版精简参数 | 1 |
-| gpt-image-2-official | 旧版质量参数与蒙版 | 1–4 |
-| gemini-3.1-flash-image-preview | Google 搜索 / 图片搜索辅助 | 1–4 |
+| gpt-image-2-official | 旧版质量控制与蒙版 | 1–4 |
+| gemini-3.1-flash-image-preview | Google 搜索辅助 | 1–4 |
 
-2.5 的质量档位为 `low / medium / high / xhigh / max / auto`，CLI 默认 **1K、medium、1 张**。支持 15 种宽高比及符合规则的精确像素尺寸，透明背景需 PNG/WebP。`gpt-image-2.5-ext` 是另一条平台路由，不等于 Flare 或 Sunburst 的别名。
+`models` 离线列出已适配的模型；`--live` 读取当前账号可见的生图模型与参数。新增但未适配的模型会标为 `discovery only`，不能直接生成。
 
-**价格不是一张图的固定报价。** 2.5 按实际 Token 用量结算，涉及提示词、参考图、质量、尺寸和数量。CLI 使用 API 返回的 `effective_rates`，显示单位和查询时间；不重复乘折扣，不将缺失值当作免费。公开默认组价格可能与账号结算价格不同。旧版按张计费接口只提供原始报价时，会标为“payable rate unverified”。[计费与模型说明](imagegen/references/models-and-pricing.md)
+价格查询走公开接口，不发送密钥；按接口返回的 `effective_rates`、单位和时间展示，不重复乘折扣、不将缺失值当作免费。2.5 按实际 Token 用量结算，公开默认组价格可能与账号结算不同。旧版按张计费原始报价会标为“payable rate unverified”。[模型与计费说明](imagegen/references/models-and-pricing.md)
 
-更改默认模型：
+## 批量任务与恢复
 
-```sh
-python imagegen/scripts/image_gen.py configure --default-model gpt-image-2.5-sunburst
-```
-
-优先级：`--model` > `APIMART_IMAGE_MODEL` > 保存的默认值 > `gpt-image-2.5-flare`。`--model auto` 使用同一顺序，不代表自动尝试多个模型。
-
-## 生成和编辑
-
-```sh
-python imagegen/scripts/image_gen.py generate --prompt "A ceramic teapot in soft studio light" --size 16:9 --resolution 2k --out output/teapot.png
-python imagegen/scripts/image_gen.py edit --image "photos/my product.png" --prompt "Change only the background to warm gray; preserve the product and lettering" --out output/product-edited.png
-python imagegen/scripts/image_gen.py generate --prompt "A folded paper fox, complete subject" --background transparent --output-format png --out output/fox.png
-```
-
-长提示词、引号和多行文本建议存入 UTF-8 文件，用 `--prompt-file prompt.txt`。重复 `--image` 可传多张参考图；2.5 最多 16 张。编辑不传尺寸时，由服务根据输入比例计算；传入 `--size` 会覆盖该行为。
-
-本地输入先上传到 APIMART，得到临时**公开 URL**，再提交生成。支持 PNG/JPEG/WebP/GIF，单文件不超过 20 MiB。API 已停止接受直接传入 Base64 图片；不要上传你无权分享的素材。输出 URL 会过期，CLI 会下载到本机。
-
-预演不花费额度、不上传文件、不联网：
-
-```sh
-python imagegen/scripts/image_gen.py generate --prompt-file prompt.txt --size 1600x1200 --dry-run
-```
-
-结果默认保存在 `output/imagegen/`。现有文件会被保护；只有明确需要覆盖时才传 `--force`。生成后的图片仍需检查文字、内容和透明通道。
-
-## 批量生成和任务恢复
-
-创建 `jobs.jsonl`：
+`jobs.jsonl` 每行一个请求，未填写的选项使用本地默认值：
 
 ```jsonl
 {"prompt":"A red ceramic teapot", "out":"teapot.png"}
@@ -150,58 +187,33 @@ python imagegen/scripts/image_gen.py generate --prompt-file prompt.txt --size 16
 ```
 
 ```sh
-python imagegen/scripts/image_gen.py generate-batch --input jobs.jsonl --out-dir output/batch --dry-run
-python imagegen/scripts/image_gen.py generate-batch --input jobs.jsonl --out-dir output/batch --concurrency 2
+imagegen batch --input jobs.jsonl --out-dir output/batch --dry-run
+imagegen batch --input jobs.jsonl --out-dir output/batch --concurrency 2
+imagegen fetch TASK_ID
 ```
 
-任务上限 500，并发范围 1–8、默认 2。输出路径必须位于指定目录内。失败返回非零退出码，成功的文件会保留。
+最多 500 个任务、1–8 个工作线程。全部任务验证后才开始调用 API。失败不会删除成功文件，部分失败会返回非零退出码。
 
-任务提交后会打印 ID，并在本机配置目录 `tasks/` 保存不含提示词或密钥的记录。超时、断网或下载失败时，用原任务恢复：
+提交后打印任务 ID，并保存不含提示词/密钥的任务记录。`fetch` 读取记录中的输出路径与数量，继续查询或下载，**不会重新提交生图**。换机器恢复时使用 `--out`/`--out-dir` 和 `--n`。若提交失败且没有 ID，先检查 APIMART 任务历史。[完整 CLI 说明](imagegen/references/cli.md)
+
+## 开发与验证
 
 ```sh
-python imagegen/scripts/image_gen.py fetch TASK_ID --out output/recovered.png
-python imagegen/scripts/image_gen.py fetch TASK_ID --n 4 --out-dir output/recovered
+cargo test --locked
+cargo fmt --check
+cargo clippy --locked --all-targets -- -D warnings
+cargo audit
+cargo build --release --locked
 ```
 
-`fetch` 不会提交新的生成任务。按原记录填写图片数和输出路径。如果提交失败且没有拿到 ID，先去 APIMART 查看任务记录，再决定是否重试。[完整 CLI 说明](imagegen/references/cli.md)
+Rust 2024 edition，最低 Rust 1.88，提交 `Cargo.lock`，禁止本项目的 unsafe 代码。HTTP 使用 reqwest + rustls，参数使用 clap，序列化使用 serde；这些依赖编译进程序，用户无需安装它们。网络生图速度主要取决于服务端，Rust 的收益是部署和运行时统一。
 
-## 跨平台与验证
+CI 在六个原生系统/架构上运行测试、编译 Release、制作压缩包、调用安装器，再运行已安装的二进制；还测试损坏包拒绝与旧安装保护。另检查格式、Clippy、最低编译器版本、依赖漏洞与标准技能结构。CI 不使用真实密钥、不产生生图费用。[跨平台实现依据](docs/portability.md)
 
-实现使用 `pathlib`、标准库 HTTPS、隐藏输入和显式 UTF-8，不依赖 Bash、`chmod` 命令、curl、符号链接或 shell 激活。所有脚本均可由 Python 解释器执行。
+v1 Python 实现保留在历史版本，v2 仓库不再混用两套 CLI。Rust 会读取旧 `config.json` 的默认模型和旧密钥；新修改保存为 TOML。[迁移说明](imagegen/references/configuration.md#migration-from-v1)
 
-[GitHub Actions](https://github.com/okooo5km/apimart-imagegen/actions/workflows/ci.yml) 在 **macOS、Ubuntu、Windows × Python 3.10–3.14** 上执行相同测试，覆盖配置路径、Unicode/空格路径、BOM/CRLF、上传→提交→轮询→下载、费用信息、超时恢复、覆盖保护、批处理和结构检查。CI 使用隔离配置与本地 HTTP 模拟服务，不读取真实密钥、不产生 API 费用。
+## 许可与更多技能
 
-```sh
-python -m pip install -r requirements-dev.txt
-python -m ruff check .
-python -m unittest discover -s tests -v
-```
+Apache-2.0，见 [LICENSE](LICENSE) 和 [NOTICE](NOTICE)。独立社区项目，与 OpenAI、APIMART、YouMind 无官方隶属关系。新增模型请附官方参数来源、行为测试和跨平台验证；公开日志前移除密钥、私人提示词和临时图片 URL。
 
-另按 skill-creator 的 `quick_validate.py` 检查了技能结构，并做独立 Agent 使用测试。网络服务的可用性、账号额度和生成内容质量不由跨平台 CI 保证。
-
-可选的 `remove_chroma_key.py` 用于本地色键抠图；它和蒙版验证需要 Pillow。核心生图不需要安装 Pillow。使用受系统保护的 Python 时，可建立虚拟环境或用 `uv run --with pillow`，不必激活 shell 环境。[跨平台设计依据](docs/portability.md)
-
-## 项目结构
-
-```text
-apimart-imagegen/
-├── README.md / README.en.md
-├── LICENSE / NOTICE
-├── imagegen/                  ← 可独立安装的技能
-│   ├── SKILL.md
-│   ├── LICENSE.txt / NOTICE
-│   ├── agents/openai.yaml
-│   ├── scripts/
-│   └── references/
-├── tests/
-├── docs/portability.md
-└── .github/workflows/ci.yml
-```
-
-## 贡献与许可
-
-欢迎提交问题和 PR。新增模型请附 APIMART 官方参数来源、dry-run 测试及三平台 CI 结果；不要把未核实参数直接透传为“已支持”。公开错误日志时移除密钥、私人提示词和临时图片 URL。API 冒烟测试需维护者授权并使用自己的账号。
-
-本项目基于原有 imagegen 技能重构，保留 **Apache-2.0** 许可。改动涵盖网络 CLI、跨平台配置、模型发现、价格查询、文档和测试。它是独立社区项目，与 OpenAI、APIMART、YouMind 无官方隶属关系。
-
-喜欢这个技能的话，可以看看十里的 [更多技能与 YouMind 作品](https://sink.5km.tech/skills)，也欢迎给仓库一个 Star。
+欢迎查看十里的 [更多技能与 YouMind 作品](https://sink.5km.tech/skills)，也欢迎 Star 或提交 PR。

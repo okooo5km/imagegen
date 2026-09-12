@@ -1,21 +1,17 @@
-# CLI and recovery
+# Commands and recovery
 
-Paths in these examples are relative to the skill directory. Agents should invoke the script by absolute path from the user's workspace. Use `python3`, `python`, or `py -3` according to the installed Python 3.10+ interpreter. Every command exposes `--help`.
+Run `imagegen --help` or `<command> --help`. Invoke from the desired output workspace, using an absolute binary path if PATH is not available.
 
 ```text
-python scripts/image_gen.py generate --prompt-file prompt.txt --size 16:9 --resolution 2k --quality high --out output/hero.png
-python scripts/image_gen.py edit --model gpt-image-2.5-sunburst --image "photos/my product.png" --prompt "Replace only the background with white" --out output/product.png
-python scripts/image_gen.py generate --prompt "A paper fox" --background transparent --output-format webp --out output/fox.webp
-python scripts/image_gen.py generate --prompt "A ceramic mug" --size 1600x1200 --dry-run
+imagegen generate --prompt-file prompt.txt --aspect-ratio 16:9 --resolution 2k --quality high --out output/hero.png
+imagegen edit --model gpt-image-2.5-sunburst --image "photos/my product.png" --prompt "Replace only the background with white" --out output/product.png
+imagegen generate --prompt "A fox sticker" --background transparent --output-format webp --out output/fox.webp
+imagegen generate --prompt "A teapot" --size 1600x1200 --dry-run
 ```
 
-`generate --image` also supports references; supplying images activates image-to-image behavior. Prompt and prompt-file are mutually exclusive; text files use UTF-8 (BOM accepted). `--n` requests variants of one prompt. Multiple results use numbered filenames. A downloaded image's signature determines its extension. Existing files and extension collisions are checked before submission, then again at write time.
-
-`--timeout` defaults to 600 seconds per task; `--poll-interval` defaults to 4 seconds. Network operations have bounded timeouts. A timeout stops waiting, not the remote task. Interrupted work may continue and incur a charge.
+`--image` also works on `generate` for reference-based variations. UTF-8 prompt/JSONL files accept BOM and CRLF. `--n` creates variants of one prompt. Distinct prompts belong in a batch. Downloaded signatures determine actual file extensions. Existing files are protected before billing and again during atomic writes; `--force` opts into replacement.
 
 ## Batch
-
-Create a UTF-8 JSONL file with one request per line. Use API-style parameter names; `out` is a relative path inside `--out-dir`:
 
 ```jsonl
 {"prompt":"A red ceramic teapot", "out":"teapot.png"}
@@ -24,25 +20,24 @@ Create a UTF-8 JSONL file with one request per line. Use API-style parameter nam
 ```
 
 ```text
-python scripts/image_gen.py generate-batch --input jobs.jsonl --out-dir output/batch --dry-run
-python scripts/image_gen.py generate-batch --input jobs.jsonl --out-dir output/batch --concurrency 2
+imagegen batch --input jobs.jsonl --out-dir output/batch --dry-run
+imagegen batch --input jobs.jsonl --out-dir output/batch --concurrency 2
 ```
 
-All jobs are validated before API work, including missing input files, unsupported parameters, output collisions and traversal outside the output directory. Reference paths are relative to the working directory, not the JSONL file. 1–500 jobs, concurrency 1–8. Independent failures do not delete completed results. There is no automatic retry; review task IDs before rerunning only failed jobs.
+API-style parameter names are used, plus `aspect_ratio` and relative `out`. Inputs are relative to the working directory. All jobs and output destinations are validated before API calls. Outputs cannot traverse parent directories or symlinks; case/extension collisions are rejected for portability. 1–500 jobs and 1–8 worker threads. A failure does not remove successful outputs. Every submitted job can incur a charge.
 
 ## Recovery
 
-The CLI writes a receipt under the configuration directory's `tasks/`, containing task ID, model and intended absolute output paths, without prompts or secrets.
+Submission prints a task ID and writes a receipt under the config directory's `tasks/` with model and absolute output paths, excluding prompts, credentials and reference URLs.
 
 ```text
-python scripts/image_gen.py fetch TASK_ID --out output/recovered.png
-python scripts/image_gen.py fetch TASK_ID --n 4 --out-dir output/recovered
+imagegen fetch TASK_ID
+imagegen fetch TASK_ID --out output/recovered.png
+imagegen fetch TASK_ID --n 4 --out-dir output/recovered
 ```
 
-Use the original `n` and intended paths from the receipt. Fetch polls/downloads and never submits a new generation. Already downloaded files are protected; pass `--force` only when replacing them is intended. If a submission fails without an ID, look in APIMART task history before retrying.
+Without output/count flags, fetch restores the Rust receipt if it exists. If working on another machine, or recovering a v1 task, provide the original count and intended path explicitly. Already downloaded files remain protected; use `--force` only when replacing them is intended. Fetch never creates another generation task.
 
-Exit codes: `0` success, `2` invalid arguments/configuration/input, `1` API/filesystem/task failure, `130` keyboard interrupt. A partial batch failure exits nonzero.
+The default timeout is 600 seconds per task, polling every 4 seconds; settings and flags can override both. Stopping the CLI does not cancel a remote task. If submission fails without a task ID, check APIMART history before submitting again. No generation POST is automatically retried, including transport retry policies.
 
-## Migration from the original skill
-
-The old `--augment`/prompt-augmentation fields and downscale flags are removed. Put the final prompt in a UTF-8 prompt file; post-process through your preferred image tool. `auto` no longer suggests fallback models. Resolution defaults to 1K for every ratio, avoiding an implicit increase for wide images. Base64 input is rejected because APIMART now requires uploads. Old `~/.config/imagegen/apimart.key` files remain supported.
+Exit codes: 0 success, 1 runtime/configuration/API failure, 2 CLI syntax failure (clap). Partial batches return 1. Ctrl-C terminates the process; retain submitted task IDs for recovery.

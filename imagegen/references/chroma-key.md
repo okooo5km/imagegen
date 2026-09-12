@@ -1,11 +1,11 @@
-# Optional chroma-key removal
+# Native chroma-key removal
 
-Prefer native `--background transparent` with GPT Image 2.5. Use this helper for an existing image on a flat key color, or when the requested workflow needs a chroma key.
-
-Install Pillow in the chosen Python environment, then run:
+Prefer GPT Image 2.5 native transparency for newly generated images. For an existing image on a flat key color:
 
 ```text
-python scripts/remove_chroma_key.py --input keyed.png --out transparent.png --auto-key border --soft-matte --transparent-threshold 12 --opaque-threshold 220 --despill
+imagegen remove-chroma-key --input keyed.png --out transparent.png --key 00ff00 --tolerance 30 --softness 60 --despill
 ```
 
-Inspect alpha coverage and edges; hair, glass, reflections and translucent subjects may need another workflow. Pick a key color absent from the subject. The helper performs local processing and makes no network request. Use `--help` for threshold, despill and edge controls.
+No Python/Pillow dependency is involved. Output must be PNG. The algorithm computes RGB distance from the key color, creates a soft alpha transition, preserves existing alpha, and optionally suppresses the dominant key channel near transparent edges. `--force` permits replacing an existing output.
+
+Inspect edges and subject coverage. Hair, glass, reflections and translucent material may need another approach. The v1 helper's border-key detection and advanced edge filters are not part of this command; choose an explicit key and thresholds.

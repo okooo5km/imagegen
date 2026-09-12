@@ -17,11 +17,11 @@ Local reference files must be PNG/JPEG/WebP/GIF, at most 20 MiB each. They uploa
 ## Commands
 
 ```text
-python scripts/image_gen.py models
-python scripts/image_gen.py models --live --json
-python scripts/image_gen.py models --prices
-python scripts/image_gen.py prices --model gpt-image-2.5-flare --json
-python scripts/image_gen.py configure --default-model gpt-image-2.5-sunburst
+imagegen models
+imagegen models --live --json
+imagegen models --prices
+imagegen prices --model gpt-image-2.5-flare --json
+imagegen config set model gpt-image-2.5-sunburst
 ```
 
 `models` is offline and lists bundled runnable profiles. `--live` calls the authenticated `GET /v1/models?expand=parameters&category=image`; account restrictions affect its results. New or unadapted models are marked `discovery only` and include the server parameter contract in JSON. A catalog entry does not imply the CLI can safely submit to it; adding a runnable profile requires verified parameters and tests. `gpt-image-2.5-ext` is a separate APIMART route, not an alias for either official 2.5 profile.

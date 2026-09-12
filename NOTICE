@@ -1,8 +1,8 @@
-APIMart Imagegen
+Imagegen
 Copyright 2026 okooo5km(十里)
 
 Derived from the user's Apache-2.0-licensed imagegen skill and its prompting
 references/local chroma-key helper. The original Apache License is preserved.
-The network CLI, configuration, model discovery, documentation and tests have
-been revised for this distribution. This is an independent community project;
+Version 2 replaces the Python implementation with a native Rust CLI, portable
+installers, persistent configuration, model discovery and behavioral tests. This is an independent community project;
 no affiliation with or endorsement by OpenAI, APIMart or YouMind is implied.

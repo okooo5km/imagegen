@@ -1,26 +1,107 @@
-name: Cross-platform validation
+name: Rust build, test and install
 on:
   push:
+    branches: [main]
+    tags: ['v2.*']
   pull_request:
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
-  test:
-    name: ${{ matrix.os }} / Python ${{ matrix.python }}
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: rustup update stable --no-self-update
+      - run: rustup component add rustfmt clippy
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: quality-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
+      - run: cargo fmt --check
+      - run: cargo clippy --locked --all-targets -- -D warnings
+      - name: Minimum supported Rust
+        run: |
+          rustup toolchain install 1.88.0 --profile minimal
+          cargo +1.88.0 check --locked
+      - name: Dependency audit
+        run: |
+          cargo install cargo-audit --locked
+          cargo audit
+  native:
+    name: ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        python: ['3.10', '3.11', '3.12', '3.13', '3.14']
+        include:
+          - os: macos-latest
+            target: aarch64-apple-darwin
+          - os: macos-15-intel
+            target: x86_64-apple-darwin
+          - os: ubuntu-24.04
+            target: x86_64-unknown-linux-musl
+          - os: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-musl
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+          - os: windows-11-arm
+            target: aarch64-pc-windows-msvc
+    env:
+      IMAGEGEN_TARGET: ${{ matrix.target }}
+      APIMART_API_KEY: ''
+      APIMART_IMAGE_MODEL: ''
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      - run: rustup update stable --no-self-update
+      - run: rustup target add ${{ matrix.target }}
+      - if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update && sudo apt-get install -y musl-tools
+          echo "CC=musl-gcc" >> "$GITHUB_ENV"
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          python-version: ${{ matrix.python }}
-      - run: python -m pip install -r requirements-dev.txt
-      - run: python -m ruff check .
-      - run: python -m unittest discover -s tests -v
-      - name: Dependency-free CLI smoke
-        run: python -S imagegen/scripts/image_gen.py generate --prompt "A paper fox" --dry-run
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: native-${{ matrix.target }}-${{ hashFiles('Cargo.lock') }}
+      - run: cargo test --locked --target ${{ matrix.target }}
+      - run: cargo build --release --locked --target ${{ matrix.target }}
+      - name: Package, install and test the executable
+        if: runner.os != 'Windows'
+        run: sh .github/package.sh
+      - name: Package, install and test the executable (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./.github/package.ps1
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: imagegen-${{ matrix.target }}
+          path: dist/*
+          if-no-files-found: error
+  release:
+    if: startsWith(github.ref, 'refs/tags/v2.')
+    needs: [quality, native]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: imagegen-*
+          merge-multiple: true
+          path: dist
+      - name: Publish verified archives
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          cp installers/install.sh installers/install.ps1 dist/
+          git archive HEAD:imagegen --prefix=imagegen/ --format=zip --output=dist/imagegen-skill.zip
+          sha256sum dist/imagegen-skill.zip > dist/imagegen-skill.zip.sha256
+          gh release create "$RELEASE_TAG" dist/* --verify-tag --generate-notes
