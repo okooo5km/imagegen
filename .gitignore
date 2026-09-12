@@ -1,0 +1,16 @@
+.DS_Store
+Thumbs.db
+__pycache__/
+*.py[cod]
+.venv/
+.env
+.env.*
+*.key
+output/
+tmp/
+dist/
+.pytest_cache/
+.coverage
+.ruff_cache/
+
+.local/

@@ -1,0 +1,4 @@
+interface:
+  display_name: "APIMart Imagegen"
+  short_description: "Generate images and compare APIMart model prices"
+  default_prompt: "Use $imagegen to create an image with APIMart."
