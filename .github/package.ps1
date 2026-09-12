@@ -27,3 +27,6 @@ if (-not $rejected) { throw 'Corrupt archive was accepted' }
 Move-Item "dist/$archive.good" "dist/$archive" -Force
 & imagegen --version
 if ($LASTEXITCODE -ne 0) { throw 'Existing binary was damaged' }
+# Also exercise the Windows PowerShell shipped with Windows, as documented.
+& powershell.exe -NoProfile -ExecutionPolicy Bypass -File ./installers/install.ps1
+if ($LASTEXITCODE -ne 0) { throw 'Windows PowerShell installation failed' }
