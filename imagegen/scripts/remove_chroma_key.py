@@ -425,6 +425,9 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="replace")
     parser = _build_parser()
     args = parser.parse_args()
     _validate_args(args)

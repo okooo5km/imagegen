@@ -329,7 +329,8 @@ class ChromaTests(Isolated):
             for y in range(8, 24):
                 im.putpixel((x, y), (255, 0, 0))
         im.save(source)
-        run = subprocess.run([sys.executable, str(SCRIPTS / 'remove_chroma_key.py'), '--input', str(source), '--out', str(output)], capture_output=True, timeout=30)
+        env = {**os.environ, 'PYTHONIOENCODING': 'cp1252'}
+        run = subprocess.run([sys.executable, str(SCRIPTS / 'remove_chroma_key.py'), '--input', str(source), '--out', str(output)], capture_output=True, timeout=30, env=env)
         self.assertEqual(run.returncode, 0, run.stderr)
         with Image.open(output) as result:
             self.assertEqual(result.mode, 'RGBA')
