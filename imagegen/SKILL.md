@@ -13,7 +13,9 @@ Use the native Rust **imagegen** CLI. It does not require Python, Node.js, Rust,
 
 ## Installation and configuration
 
-Run `imagegen --version` and `imagegen doctor`. If unavailable, follow [references/setup.md](references/setup.md) to install the matching prebuilt binary; do not try the removed Python scripts. Installers verify archive SHA-256 checksums. If a new PATH entry is not visible in this session, invoke the installed binary by absolute path: `~/.local/bin/imagegen` on macOS/Linux, `%LOCALAPPDATA%\imagegen\bin\imagegen.exe` on Windows. Expand these locations for the actual shell.
+Check `imagegen --version`. If the command is missing, check the configured `IMAGEGEN_INSTALL_DIR` or the default executable path (`~/.local/bin/imagegen` on macOS/Linux, `%LOCALAPPDATA%\imagegen\bin\imagegen.exe` on Windows) before reinstalling; expand paths for the actual shell. If no executable is installed, carry out the matching prebuilt CLI installation from [references/setup.md](references/setup.md) in the task's execution environment, within the host's permissions. Do not merely give the user installation commands when you can perform this setup. Respect host approval requirements; if execution, downloads or installation are blocked, explain the specific limitation and provide the setup commands instead.
+
+After installation, use the resolved absolute executable path when PATH has not refreshed. Run `--version` and `doctor`, then continue the original task. Do not retry a failing installation repeatedly or claim installation succeeded without running the binary. Installers verify SHA-256 checksums; do not bypass a failed checksum or use the removed Python scripts. Importing this skill alone does not execute an installer.
 
 Run from the user's project directory so relative outputs belong to the project. Quote paths containing spaces. Use `--prompt-file` for multiline or complex prompts.
 

@@ -52,6 +52,12 @@ Claude documents **Customize → Skills → + Create skill → Upload a skill**.
 
 For directory-based agents, extract the archive as ZIP and copy the complete `imagegen/` folder to the skill directory. Decide whether to replace any existing same-name skill. Importing the skill does not install the CLI: its execution environment must support command execution, the matching CLI, network access and APIMART key configuration. A chat environment that only reads attachments cannot execute image generation.
 
+### Install only the Skill first
+
+You do not need to preinstall the CLI manually. On first invocation, the agent checks PATH and the configured/default installation directory. If absent, it downloads the matching binary, verifies SHA-256, installs it in the user directory, runs `--version` and `doctor`, then resumes your task. It reuses existing installations and uses an absolute path if PATH has not refreshed. Authenticated tasks then guide you through `imagegen auth set` and online verification; prices and dry runs need no key.
+
+This is agent-driven setup on first use, not an install hook triggered by importing `.skill`. The host must permit command execution, downloads and installation; any host approval requirements still apply. Otherwise the agent explains the limitation and provides manual commands. Installation happens where the agent executes commands: a cloud or sandbox installation does not install onto your desktop and may need repeating after an environment reset.
+
 ## Configure credentials and defaults
 
 Register at [APIMART](https://apimart.ai), create a key on the [API keys page](https://apimart.ai/keys), and ensure your account has a usable balance. The author's referral link is pending approval; the official website is used meanwhile.

@@ -2,6 +2,12 @@
 
 Supported release targets: macOS Intel/Apple Silicon, Linux x64/ARM64 (static musl), Windows x64/ARM64 (MSVC with a bundled C runtime). Download only the archive matching the OS/architecture. No Python, Node.js, Rust compiler or OpenSSL installation is needed to run it.
 
+## Skill-first startup
+
+Users may install only the Skill. On first invocation, the agent checks the CLI on PATH and in the configured/default installation directory. If missing, the agent runs the appropriate installation commands below, verifies the binary with `--version` and `doctor`, and resumes the original task. Do this automatically when the host permits it; follow any host approval prompts. A skill import is not an executable installation hook.
+
+Install into the environment where the agent runs commands. A sandbox/container installation does not install onto the user's desktop and may disappear when the environment resets. If that environment cannot download or execute the binary, explain the limitation rather than claiming the Skill is ready. Existing CLI installations are reused; a missing PATH entry alone is not a reason to reinstall. For an override, use `IMAGEGEN_INSTALL_DIR` consistently in the installer and subsequent absolute executable path.
+
 ## macOS / Linux
 
 ```sh
