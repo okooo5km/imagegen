@@ -15,7 +15,7 @@ By **okooo5km(十里)**. [More skills and the author's YouMind work](https://sin
 macOS / Linux:
 
 ```sh
-curl --proto '=https' --tlsv1.2 -fLsS https://github.com/okooo5km/imagegen/releases/download/v2.0.0/install.sh -o /tmp/imagegen-install.sh
+curl --proto '=https' --tlsv1.2 -fLsS https://github.com/okooo5km/imagegen/releases/download/v2.0.1/install.sh -o /tmp/imagegen-install.sh
 sh /tmp/imagegen-install.sh
 export PATH="$HOME/.local/bin:$PATH"
 imagegen --version
@@ -26,7 +26,7 @@ Installs to `~/.local/bin` without sudo. Add the export to your shell profile fo
 Windows PowerShell:
 
 ```powershell
-Invoke-WebRequest https://github.com/okooo5km/imagegen/releases/download/v2.0.0/install.ps1 -OutFile "$env:TEMP\imagegen-install.ps1"
+Invoke-WebRequest https://github.com/okooo5km/imagegen/releases/download/v2.0.1/install.ps1 -OutFile "$env:TEMP\imagegen-install.ps1"
 powershell -NoProfile -ExecutionPolicy Bypass -File "$env:TEMP\imagegen-install.ps1"
 $env:Path = "$env:LOCALAPPDATA\imagegen\bin;$env:Path"
 imagegen --version
@@ -55,6 +55,7 @@ Register at [APIMART](https://apimart.ai), create a key on the [API keys page](h
 ```sh
 imagegen auth set
 imagegen auth status
+imagegen auth check
 imagegen doctor
 imagegen config set model gpt-image-2.5-flare
 imagegen config set aspect_ratio 16:9
@@ -62,6 +63,8 @@ imagegen config set resolution 2k
 imagegen config set quality high
 imagegen config show
 ```
+
+`auth check` verifies model-list access with a read-only request and generates no image. Success does not verify balance or all model permissions. Replace rejected credentials on 401; investigate permissions on 403; retain the key on rate limits/network failures. Public prices, local configuration and dry runs need no key.
 
 Enter your key in your own terminal using hidden input, never in chat. It is stored separately from defaults and outside the project. CI can provide `APIMART_API_KEY` through a secret environment variable. `auth status` checks local presence, not authentication or balance. Project `.env` files are not loaded automatically.
 
@@ -142,6 +145,6 @@ cargo build --release --locked
 
 CI builds/tests on six native OS/architecture combinations, packages the executable, runs the installer and installed CLI, and rejects deliberately corrupt archives. It also checks the minimum compiler, lints and dependency advisories. CI uses local HTTP fixtures and no paid API calls. [Portability decisions](docs/portability.md).
 
-v1's Python implementation remains in history; v2 ships only the Rust CLI. Old default-model JSON and key locations remain readable; new config writes use TOML. Developers can install from source with `cargo install --git https://github.com/okooo5km/imagegen --tag v2.0.0 --locked`.
+v1's Python implementation remains in history; v2 ships only the Rust CLI. Old default-model JSON and key locations remain readable; new config writes use TOML. Developers can install from source with `cargo install --git https://github.com/okooo5km/imagegen --tag v2.0.1 --locked`.
 
 Apache-2.0; see [LICENSE](LICENSE) and [NOTICE](NOTICE). Independent community project, not affiliated with OpenAI, APIMART or YouMind. Model contributions should include official API sources and behavioral tests. Remove secrets and private references from public reports.

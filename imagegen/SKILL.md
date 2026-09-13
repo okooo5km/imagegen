@@ -4,7 +4,7 @@ description: Generate and edit raster images with the imagegen CLI through APIMa
 license: Apache-2.0; see LICENSE.txt
 metadata:
   author: okooo5km(十里)
-  version: "2.0.0"
+  version: "2.0.1"
 ---
 
 # Imagegen
@@ -17,7 +17,9 @@ Run `imagegen --version` and `imagegen doctor`. If unavailable, follow [referenc
 
 Run from the user's project directory so relative outputs belong to the project. Quote paths containing spaces. Use `--prompt-file` for multiline or complex prompts.
 
-`imagegen auth status` checks local key presence. If missing, show the APIMart registration/key links and `imagegen auth set` from the setup reference. The user enters the key in their terminal; never request it in chat or place it in project files.
+For generation, edits, batch submission, task recovery and live model discovery, run `imagegen auth status` to check local key presence. If missing, show the registration/key links and ask the user to run `imagegen auth set` in their own terminal using [references/setup.md](references/setup.md). Never ask for a key in chat. After setup or replacement, run `imagegen auth check`, then resume the original task when verification succeeds. Do not repeatedly verify before every image. On HTTP 401, guide replacement; on 403, explain account/endpoint restrictions; on network errors or rate limits, retain the key and retry later without submitting an image.
+
+Public prices, offline models, local configuration, chroma-key removal and `--dry-run` need no key: complete those tasks without registration prompts. Online verification checks model-list access only, not balance or permission to generate with every model.
 
 Read `imagegen config show` before assuming defaults. The built-in model is **gpt-image-2.5-flare**, 1K, medium quality, one image. Explicit CLI options override saved defaults; `APIMART_IMAGE_MODEL` sits between an explicit model and the saved model. Change persistent defaults only when the user requests it. See [references/configuration.md](references/configuration.md) for size/ratio precedence, supported defaults and migration.
 

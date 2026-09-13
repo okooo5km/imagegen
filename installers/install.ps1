@@ -1,6 +1,6 @@
 # Install prebuilt imagegen for Windows x64/ARM64 without language runtimes.
 $ErrorActionPreference = 'Stop'
-$version = if ($env:IMAGEGEN_VERSION) { $env:IMAGEGEN_VERSION } else { 'v2.0.0' }
+$version = if ($env:IMAGEGEN_VERSION) { $env:IMAGEGEN_VERSION } else { 'v2.0.1' }
 if ($version -notmatch '^v\d+\.\d+\.\d+([-.][A-Za-z0-9.-]+)?$') { throw 'Invalid IMAGEGEN_VERSION' }
 $arch = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString()
 $target = switch ($arch) {

@@ -17,7 +17,7 @@
 ### macOS / Linux
 
 ```sh
-curl --proto '=https' --tlsv1.2 -fLsS https://github.com/okooo5km/imagegen/releases/download/v2.0.0/install.sh -o /tmp/imagegen-install.sh
+curl --proto '=https' --tlsv1.2 -fLsS https://github.com/okooo5km/imagegen/releases/download/v2.0.1/install.sh -o /tmp/imagegen-install.sh
 sh /tmp/imagegen-install.sh
 export PATH="$HOME/.local/bin:$PATH"
 imagegen --version
@@ -28,7 +28,7 @@ imagegen --version
 ### Windows PowerShell
 
 ```powershell
-Invoke-WebRequest https://github.com/okooo5km/imagegen/releases/download/v2.0.0/install.ps1 -OutFile "$env:TEMP\imagegen-install.ps1"
+Invoke-WebRequest https://github.com/okooo5km/imagegen/releases/download/v2.0.1/install.ps1 -OutFile "$env:TEMP\imagegen-install.ps1"
 powershell -NoProfile -ExecutionPolicy Bypass -File "$env:TEMP\imagegen-install.ps1"
 $env:Path = "$env:LOCALAPPDATA\imagegen\bin;$env:Path"
 imagegen --version
@@ -77,6 +77,7 @@ npx skills add okooo5km/imagegen --skill imagegen
 ```sh
 imagegen auth set
 imagegen auth status
+imagegen auth check
 imagegen doctor
 ```
 
@@ -89,6 +90,8 @@ imagegen doctor
 | 覆盖 | `IMAGEGEN_CONFIG_DIR` |
 
 密钥保存在 `apimart.key`，默认参数保存在 `config.toml`。配置写入采用原子替换；Unix 文件权限为 600，Windows 使用用户目录的访问控制。
+
+`auth check` 通过只读模型列表请求验证密钥，不产生生图费用；成功不代表余额充足或所有模型均获授权。401 引导更换密钥，403 检查权限，限流或网络故障保留密钥稍后重试。公开价格、本地配置和 dry-run 无需密钥。
 
 ## 保存自己的默认参数
 

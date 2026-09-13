@@ -1,7 +1,7 @@
 #!/bin/sh
 # Install prebuilt imagegen without Python, Node, Rust, or root privileges.
 set -eu
-version=${IMAGEGEN_VERSION:-v2.0.0}
+version=${IMAGEGEN_VERSION:-v2.0.1}
 case "$version" in v[0-9]*.[0-9]*.[0-9]*) ;; *) echo 'Invalid IMAGEGEN_VERSION' >&2; exit 1 ;; esac
 os=$(uname -s)
 arch=$(uname -m)

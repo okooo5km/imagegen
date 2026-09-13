@@ -254,3 +254,60 @@ fn task_receipt_and_recovery() {
         before
     );
 }
+
+#[test]
+fn auth_check_is_read_only_and_classifies_failures() {
+    for (status, body, expected) in [
+        (200, r#"{"data":[]}"#, None),
+        (401, r#"{"error":"secret-sentinel"}"#, Some("HTTP 401")),
+        (403, "secret-sentinel", Some("HTTP 403")),
+        (429, "secret-sentinel", Some("HTTP 429")),
+        (503, "secret-sentinel", Some("HTTP 503")),
+        (302, "secret-sentinel", Some("HTTP 302")),
+        (
+            200,
+            r#"{"data":[],"success":false}"#,
+            Some("did not confirm"),
+        ),
+        (
+            200,
+            "secret-sentinel",
+            Some("Unexpected authentication response"),
+        ),
+    ] {
+        let server = Server::http("127.0.0.1:0").unwrap();
+        let base = format!("http://{}", server.server_addr());
+        let thread = std::thread::spawn(move || {
+            let request = server
+                .recv_timeout(Duration::from_secs(5))
+                .unwrap()
+                .unwrap();
+            assert_eq!(request.method().as_str(), "GET");
+            assert_eq!(request.url(), "/v1/models");
+            assert!(request.headers().iter().any(
+                |h| h.field.equiv("Authorization") && h.value.as_str() == "Bearer fixture-key"
+            ));
+            request
+                .respond(Response::from_string(body).with_status_code(status))
+                .unwrap();
+        });
+        let result = Api::with_base(&base).unwrap().check_auth("fixture-key");
+        match expected {
+            None => result.unwrap(),
+            Some(message) => {
+                let error = result.unwrap_err().to_string();
+                assert!(error.contains(message), "{error}");
+                assert!(!error.contains("secret-sentinel"));
+                assert!(!error.contains("fixture-key"));
+            }
+        }
+        thread.join().unwrap();
+    }
+    let error = Api::with_base("http://[invalid")
+        .unwrap()
+        .check_auth("fixture-key")
+        .unwrap_err()
+        .to_string();
+    assert!(error.contains("network"), "{error}");
+    assert!(!error.contains("fixture-key"));
+}

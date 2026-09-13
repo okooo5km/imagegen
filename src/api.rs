@@ -74,6 +74,55 @@ impl Api {
         }
         Ok(value)
     }
+    /// Verify access with a read-only model catalog request; never submit an image.
+    pub fn check_auth(&self, key: &str) -> Result<()> {
+        let response = self.auth.get(format!("{}/v1/models", self.base))
+            .bearer_auth(key).send().map_err(|error| {
+                if error.is_timeout() {
+                    anyhow::anyhow!("Authentication check timed out. Keep your key and retry later.")
+                } else {
+                    anyhow::anyhow!("Authentication check could not reach APIMart. Check your network; key validity is unknown.")
+                }
+            })?;
+        match response.status().as_u16() {
+            401 => bail!(
+                "APIMart rejected the key (HTTP 401). Run imagegen auth set to replace it; check APIMART_API_KEY if set."
+            ),
+            403 => bail!(
+                "APIMart denied model-list access (HTTP 403). Check key permissions or account restrictions; this does not prove the key is invalid."
+            ),
+            429 => {
+                bail!("APIMart rate limited the check (HTTP 429). Keep your key and retry later.")
+            }
+            code if !(200..300).contains(&code) => bail!(
+                "Authentication check returned HTTP {code}; key validity is unknown. Retry after checking service status."
+            ),
+            _ => (),
+        }
+        let mut raw = Vec::new();
+        response
+            .take(8 * 1024 * 1024 + 1)
+            .read_to_end(&mut raw)
+            .map_err(|_| {
+                anyhow::anyhow!("Cannot read authentication response; key validity is unknown.")
+            })?;
+        if raw.len() > 8 * 1024 * 1024 {
+            bail!("Authentication response exceeds 8 MiB");
+        }
+        let value: Value = serde_json::from_slice(&raw).map_err(|_| {
+            anyhow::anyhow!("Unexpected authentication response; key validity is unknown.")
+        })?;
+        if !value["data"].is_array()
+            || value.get("success") == Some(&Value::Bool(false))
+            || value.get("error").is_some_and(|v| !v.is_null())
+            || value.get("code").is_some_and(|v| v != 0 && v != 200)
+        {
+            bail!(
+                "APIMart did not confirm model-list access; check account permissions. Key validity is unknown."
+            );
+        }
+        Ok(())
+    }
     pub fn upload(&self, reference: &str, key: &str) -> Result<String> {
         validate_reference(reference)?;
         if public_url(reference) {

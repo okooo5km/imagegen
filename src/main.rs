@@ -69,6 +69,8 @@ enum ConfigCommand {
 enum AuthCommand {
     Set,
     Status,
+    /// Verify model-list access online without generating an image.
+    Check,
 }
 #[derive(Args, Clone)]
 struct Output {
@@ -556,7 +558,17 @@ fn run() -> Result<()> {
                 &dir.join("apimart.key"),
                 format!("{}\n", key.trim()).as_bytes(),
             )?;
-            println!("Key saved outside the project.");
+            println!("Key saved outside the project. Next: imagegen auth check.");
+            return Ok(());
+        }
+        Command::Auth {
+            command: AuthCommand::Check,
+        } => {
+            let (key, _) = config::resolve_key(&dir)?.with_context(|| format!("Key missing. Register at {}; get a key at https://apimart.ai/keys; run imagegen auth set.", config::SIGNUP))?;
+            Api::new()?.check_auth(&key)?;
+            println!(
+                "Authentication verified: model-list access allowed. No image submitted. Balance and generation permissions are not verified."
+            );
             return Ok(());
         }
         Command::Auth {

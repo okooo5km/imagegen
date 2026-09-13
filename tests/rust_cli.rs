@@ -163,6 +163,9 @@ fn no_key_and_noninteractive_auth_are_actionable() {
     assert!(!o.status.success());
     assert!(String::from_utf8_lossy(&o.stderr).contains("imagegen auth set"));
     assert!(!cli(t.path(), &["auth", "set"]).status.success());
+    let online = cli(t.path(), &["auth", "check"]);
+    assert!(!online.status.success());
+    assert!(String::from_utf8_lossy(&online.stderr).contains("imagegen auth set"));
 }
 #[test]
 fn exact_sizes_are_validated() {
