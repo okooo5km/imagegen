@@ -102,6 +102,8 @@ jobs:
           RELEASE_TAG: ${{ github.ref_name }}
         run: |
           cp installers/install.sh installers/install.ps1 dist/
-          git archive HEAD:imagegen --prefix=imagegen/ --format=zip --output=dist/imagegen-skill.zip
-          sha256sum dist/imagegen-skill.zip > dist/imagegen-skill.zip.sha256
+          git archive HEAD:imagegen --prefix=imagegen/ --format=zip --output=dist/imagegen.skill
+          unzip -t dist/imagegen.skill
+          cp dist/imagegen.skill dist/imagegen-skill.zip
+          (cd dist && sha256sum imagegen.skill > imagegen.skill.sha256 && sha256sum imagegen-skill.zip > imagegen-skill.zip.sha256)
           gh release create "$RELEASE_TAG" dist/* --verify-tag --generate-notes

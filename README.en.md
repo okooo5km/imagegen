@@ -46,7 +46,11 @@ The CLI works independently. To use it from an agent:
 npx skills add okooo5km/imagegen --skill imagegen
 ```
 
-Node.js is only required for this optional skill installer. Alternatively, download `imagegen-skill.zip` and copy its complete `imagegen/` folder to your agent's skill directory. The agent needs local command execution and network access. Decide whether to replace any existing same-name skill.
+Node.js is only required for this optional installer. Download [imagegen.skill](https://github.com/okooo5km/imagegen/releases/latest/download/imagegen.skill) for applications accepting `.skill` imports. It is a ZIP archive containing the standard `imagegen/SKILL.md`, references and agent metadata, with a SHA-256 checksum. An identical [ZIP compatibility package](https://github.com/okooo5km/imagegen/releases/latest/download/imagegen-skill.zip) is available for importers that require `.zip`.
+
+Claude documents **Customize → Skills → + Create skill → Upload a skill**. ChatGPT skill availability and import controls depend on the account and client; the extension does not guarantee OS double-click installation. See [Claude's import instructions](https://support.claude.com/en/articles/12512180-use-skills-in-claude) and [OpenAI's skill structure documentation](https://learn.chatgpt.com/docs/build-skills).
+
+For directory-based agents, extract the archive as ZIP and copy the complete `imagegen/` folder to the skill directory. Decide whether to replace any existing same-name skill. Importing the skill does not install the CLI: its execution environment must support command execution, the matching CLI, network access and APIMART key configuration. A chat environment that only reads attachments cannot execute image generation.
 
 ## Configure credentials and defaults
 

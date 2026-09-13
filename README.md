@@ -59,7 +59,11 @@ CLI 可以独立使用。要让 Agent 使用它，安装标准 `imagegen` Skill�
 npx skills add okooo5km/imagegen --skill imagegen
 ```
 
-这条可选安装命令需要 Node.js；**CLI 本身不需要**。不想安装 Node.js，可以下载 Release 的 `imagegen-skill.zip`，把整个 `imagegen/` 文件夹放进 Agent 的技能目录。同名技能已存在时，先确认是否替换。
+这条可选安装命令需要 Node.js；**CLI 本身不需要**。也可以直接下载 [imagegen.skill](https://github.com/okooo5km/imagegen/releases/latest/download/imagegen.skill)，在支持该格式的应用内导入技能。包内是标准的 `imagegen/SKILL.md`、`references/` 和 `agents/` 结构，本质为 ZIP，附带 SHA-256 校验文件。
+
+若导入窗口只接受 ZIP，使用内容相同的 [ZIP 兼容包](https://github.com/okooo5km/imagegen/releases/latest/download/imagegen-skill.zip)。Claude 官方提供的路径是 **Customize → Skills → + Create skill → Upload a skill**；ChatGPT 的技能能力和导入入口以当前账户及客户端为准。扩展名不保证系统双击安装。参见 [Claude 导入说明](https://support.claude.com/en/articles/12512180-use-skills-in-claude)和 [OpenAI 技能结构说明](https://learn.chatgpt.com/docs/build-skills)。
+
+使用本地技能目录的 Agent，可以将包作为 ZIP 解压，把整个 `imagegen/` 文件夹放进技能目录。同名技能已存在时，先确认是否替换。**导入技能不等于安装 CLI**：实际执行环境仍需支持运行命令、安装对应 CLI、联网和配置 APIMART 密钥；仅能读取附件的聊天环境无法执行生图。
 
 技能会检查 CLI 是否安装、引导密钥设置，然后调用 `imagegen`。Agent 需要能读取技能、运行本地命令、访问网络。
 
