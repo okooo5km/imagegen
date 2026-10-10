@@ -2,7 +2,7 @@
 
 [![Rust build, test and install](https://github.com/okooo5km/imagegen/actions/workflows/ci.yml/badge.svg)](https://github.com/okooo5km/imagegen/actions/workflows/ci.yml)
 
-**A native Rust CLI and standard Agent Skill for APIMART image generation, editing, persistent defaults, model discovery and public pricing.**
+**A standard Agent Skill and native Rust CLI for APIMART image generation, editing, persistent defaults, model discovery and public pricing. Install the skill; the agent sets up the CLI.**
 
 [中文](README.md) · English
 
@@ -10,7 +10,29 @@ Default: **gpt-image-2.5-flare**, with **gpt-image-2.5-sunburst** support. Prebu
 
 By **okooo5km(十里)**. [More skills and the author's YouMind work](https://sink.5km.tech/skills).
 
-## Install the CLI
+## 1. Install the skill
+
+Install the skill first: the agent installs and updates the CLI on first use. The CLI stays independent; manual installation is in the next section.
+
+Install the standard `imagegen` skill:
+
+```sh
+npx skills add okooo5km/imagegen --skill imagegen
+```
+
+Node.js is only required for this optional installer. Download [imagegen.skill](https://github.com/okooo5km/imagegen/releases/latest/download/imagegen.skill) for applications accepting `.skill` imports. It is a ZIP archive containing the standard `imagegen/SKILL.md`, references and agent metadata, with a SHA-256 checksum. An identical [ZIP compatibility package](https://github.com/okooo5km/imagegen/releases/latest/download/imagegen-skill.zip) is available for importers that require `.zip`.
+
+Claude documents **Customize → Skills → + Create skill → Upload a skill**. ChatGPT skill availability and import controls depend on the account and client; the extension does not guarantee OS double-click installation. See [Claude's import instructions](https://support.claude.com/en/articles/12512180-use-skills-in-claude) and [OpenAI's skill structure documentation](https://learn.chatgpt.com/docs/build-skills).
+
+For directory-based agents, extract the archive as ZIP and copy the complete `imagegen/` folder to the skill directory. Decide whether to replace any existing same-name skill. Importing the skill does not install the CLI: its execution environment must support command execution, the matching CLI, network access and APIMART key configuration. A chat environment that only reads attachments cannot execute image generation.
+
+### Install only the Skill first
+
+You do not need to preinstall the CLI manually. On first invocation, the agent checks PATH and the configured/default installation directory. If absent, it downloads the matching binary, verifies SHA-256, installs it in the user directory, runs `--version` and `doctor`, then resumes your task. It reuses existing installations and uses an absolute path if PATH has not refreshed. Authenticated tasks then guide you through `imagegen auth set` and online verification; prices and dry runs need no key.
+
+This is agent-driven setup on first use, not an install hook triggered by importing `.skill`. The host must permit command execution, downloads and installation; any host approval requirements still apply. Otherwise the agent explains the limitation and provides manual commands. Installation happens where the agent executes commands: a cloud or sandbox installation does not install onto your desktop and may need repeating after an environment reset.
+
+## 2. Install the CLI
 
 macOS / Linux:
 
@@ -38,27 +60,9 @@ Installers detect the architecture and verify SHA-256 before replacing a binary.
 
 Manual and offline installation: download a matching archive and `.sha256` from [Releases](https://github.com/okooo5km/imagegen/releases/latest), verify, extract, and place the executable on PATH. `IMAGEGEN_ARCHIVE_DIR` lets the installer use local files. Other overrides: `IMAGEGEN_INSTALL_DIR`, `IMAGEGEN_VERSION`; Windows can skip persistent PATH changes with `IMAGEGEN_NO_MODIFY_PATH=1`.
 
-## Install the skill
+The installer defaults to the latest release, so re-running it upgrades in place without touching config or keys.
 
-The CLI works independently. To use it from an agent:
-
-```sh
-npx skills add okooo5km/imagegen --skill imagegen
-```
-
-Node.js is only required for this optional installer. Download [imagegen.skill](https://github.com/okooo5km/imagegen/releases/latest/download/imagegen.skill) for applications accepting `.skill` imports. It is a ZIP archive containing the standard `imagegen/SKILL.md`, references and agent metadata, with a SHA-256 checksum. An identical [ZIP compatibility package](https://github.com/okooo5km/imagegen/releases/latest/download/imagegen-skill.zip) is available for importers that require `.zip`.
-
-Claude documents **Customize → Skills → + Create skill → Upload a skill**. ChatGPT skill availability and import controls depend on the account and client; the extension does not guarantee OS double-click installation. See [Claude's import instructions](https://support.claude.com/en/articles/12512180-use-skills-in-claude) and [OpenAI's skill structure documentation](https://learn.chatgpt.com/docs/build-skills).
-
-For directory-based agents, extract the archive as ZIP and copy the complete `imagegen/` folder to the skill directory. Decide whether to replace any existing same-name skill. Importing the skill does not install the CLI: its execution environment must support command execution, the matching CLI, network access and APIMART key configuration. A chat environment that only reads attachments cannot execute image generation.
-
-### Install only the Skill first
-
-You do not need to preinstall the CLI manually. On first invocation, the agent checks PATH and the configured/default installation directory. If absent, it downloads the matching binary, verifies SHA-256, installs it in the user directory, runs `--version` and `doctor`, then resumes your task. It reuses existing installations and uses an absolute path if PATH has not refreshed. Authenticated tasks then guide you through `imagegen auth set` and online verification; prices and dry runs need no key.
-
-This is agent-driven setup on first use, not an install hook triggered by importing `.skill`. The host must permit command execution, downloads and installation; any host approval requirements still apply. Otherwise the agent explains the limitation and provides manual commands. Installation happens where the agent executes commands: a cloud or sandbox installation does not install onto your desktop and may need repeating after an environment reset.
-
-## Configure credentials and defaults
+## 3. Configure credentials and defaults
 
 Register at [APIMART](https://apimart.ai/register?aff=LEBeCc), create a key on the [API keys page](https://apimart.ai/keys), and ensure your account has a usable balance.
 

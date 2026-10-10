@@ -4,7 +4,7 @@
 [![Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 [![Rust](https://img.shields.io/badge/Rust-2024-orange)](Cargo.toml)
 
-**一个原生 Rust 生图 CLI，一份标准 Agent Skill。安装可执行文件后，即可通过 APIMART 生成、编辑图片、管理默认参数、查询模型与价格。**
+**一个原生 Rust 生图 CLI，一份标准 Agent Skill。安装技能后，Agent 会自行安装 CLI，即可通过 APIMART 生成、编辑图片、管理默认参数、查询模型与价格。**
 
 中文 · [English](README.en.md)
 
@@ -12,7 +12,41 @@
 
 作者：**okooo5km(十里)**。更多创作技能与 YouMind 作品：[sink.5km.tech/skills](https://sink.5km.tech/skills)。
 
-## 1. 安装 CLI
+## 1. 安装技能
+
+推荐先装技能：Agent 会在首次调用时自行检查并安装 CLI。技能与二进制解耦，CLI 仍然可以独立使用，手动安装见下一节。
+
+安装标准 `imagegen` Skill：
+
+```sh
+npx skills add okooo5km/imagegen --skill imagegen
+```
+
+这条可选安装命令需要 Node.js；**CLI 本身不需要**。也可以直接下载 [imagegen.skill](https://github.com/okooo5km/imagegen/releases/latest/download/imagegen.skill)，在支持该格式的应用内导入技能。包内是标准的 `imagegen/SKILL.md`、`references/` 和 `agents/` 结构，本质为 ZIP，附带 SHA-256 校验文件。
+
+若导入窗口只接受 ZIP，使用内容相同的 [ZIP 兼容包](https://github.com/okooo5km/imagegen/releases/latest/download/imagegen-skill.zip)。Claude 官方提供的路径是 **Customize → Skills → + Create skill → Upload a skill**；ChatGPT 的技能能力和导入入口以当前账户及客户端为准。扩展名不保证系统双击安装。参见 [Claude 导入说明](https://support.claude.com/en/articles/12512180-use-skills-in-claude)和 [OpenAI 技能结构说明](https://learn.chatgpt.com/docs/build-skills)。
+
+使用本地技能目录的 Agent，可以将包作为 ZIP 解压，把整个 `imagegen/` 文件夹放进技能目录。同名技能已存在时，先确认是否替换。**导入技能不等于安装 CLI**：实际执行环境仍需支持运行命令、安装对应 CLI、联网和配置 APIMART 密钥；仅能读取附件的聊天环境无法执行生图。
+
+### 只安装 Skill，第一次使用会怎样？
+
+**可以先只安装 Skill，不必手动预装 CLI。** 第一次调用时，Agent 按技能指引完成：
+
+1. 检查 PATH 和默认安装目录中的 CLI；已有安装直接复用。
+2. 若未安装，下载当前系统/架构的 CLI，验证 SHA-256，安装到用户目录。
+3. 运行 `imagegen --version` 和 `imagegen doctor` 确认可用，再继续原任务；PATH 未刷新时使用绝对路径。
+4. 若任务需要密钥，引导你在自己的终端运行 `imagegen auth set`，再进行在线验证。查价格或 dry-run 无需密钥。
+
+自动安装由 **Agent 首次执行技能时**完成，不会在导入 `.skill` 时触发。前提是宿主允许执行命令、下载文件及写入安装目录；宿主要求授权时仍需按提示授权。若受限，Agent 会说明具体原因并提供手动安装命令。
+
+CLI 安装在 Agent 实际运行命令的环境中。云端或沙盒安装不会自动同步到你的电脑，临时环境重置后可能需要重新安装。
+
+```text
+使用 imagegen，把默认比例设为 16:9、分辨率设为 2K，然后为这篇文章生成封面。
+使用 imagegen，比较 Flare 和 Sunburst 当前价格，先不要生成图片。
+```
+
+## 2. 安装 CLI
 
 ### macOS / Linux
 
@@ -51,37 +85,7 @@ Linux 使用静态 musl；Windows 静态链接 C 运行库。macOS 包带 ad-hoc
 
 也可以从 [Releases](https://github.com/okooo5km/imagegen/releases/latest) 手动下载压缩包和 `.sha256`，校验后解压可执行文件到 PATH。安装器支持 `IMAGEGEN_INSTALL_DIR`、`IMAGEGEN_VERSION`；离线安装可用 `IMAGEGEN_ARCHIVE_DIR` 指定存放压缩包和校验文件的目录。
 
-## 2. 安装技能
-
-CLI 可以独立使用。要让 Agent 使用它，安装标准 `imagegen` Skill：
-
-```sh
-npx skills add okooo5km/imagegen --skill imagegen
-```
-
-这条可选安装命令需要 Node.js；**CLI 本身不需要**。也可以直接下载 [imagegen.skill](https://github.com/okooo5km/imagegen/releases/latest/download/imagegen.skill)，在支持该格式的应用内导入技能。包内是标准的 `imagegen/SKILL.md`、`references/` 和 `agents/` 结构，本质为 ZIP，附带 SHA-256 校验文件。
-
-若导入窗口只接受 ZIP，使用内容相同的 [ZIP 兼容包](https://github.com/okooo5km/imagegen/releases/latest/download/imagegen-skill.zip)。Claude 官方提供的路径是 **Customize → Skills → + Create skill → Upload a skill**；ChatGPT 的技能能力和导入入口以当前账户及客户端为准。扩展名不保证系统双击安装。参见 [Claude 导入说明](https://support.claude.com/en/articles/12512180-use-skills-in-claude)和 [OpenAI 技能结构说明](https://learn.chatgpt.com/docs/build-skills)。
-
-使用本地技能目录的 Agent，可以将包作为 ZIP 解压，把整个 `imagegen/` 文件夹放进技能目录。同名技能已存在时，先确认是否替换。**导入技能不等于安装 CLI**：实际执行环境仍需支持运行命令、安装对应 CLI、联网和配置 APIMART 密钥；仅能读取附件的聊天环境无法执行生图。
-
-### 只安装 Skill，第一次使用会怎样？
-
-**可以先只安装 Skill，不必手动预装 CLI。** 第一次调用时，Agent 按技能指引完成：
-
-1. 检查 PATH 和默认安装目录中的 CLI；已有安装直接复用。
-2. 若未安装，下载当前系统/架构的 CLI，验证 SHA-256，安装到用户目录。
-3. 运行 `imagegen --version` 和 `imagegen doctor` 确认可用，再继续原任务；PATH 未刷新时使用绝对路径。
-4. 若任务需要密钥，引导你在自己的终端运行 `imagegen auth set`，再进行在线验证。查价格或 dry-run 无需密钥。
-
-自动安装由 **Agent 首次执行技能时**完成，不会在导入 `.skill` 时触发。前提是宿主允许执行命令、下载文件及写入安装目录；宿主要求授权时仍需按提示授权。若受限，Agent 会说明具体原因并提供手动安装命令。
-
-CLI 安装在 Agent 实际运行命令的环境中。云端或沙盒安装不会自动同步到你的电脑，临时环境重置后可能需要重新安装。
-
-```text
-使用 imagegen，把默认比例设为 16:9、分辨率设为 2K，然后为这篇文章生成封面。
-使用 imagegen，比较 Flare 和 Sunburst 当前价格，先不要生成图片。
-```
+安装器默认下载最新版本，重跑一次即完成升级，不会改动配置和密钥。
 
 ## 3. 配置密钥
 
