@@ -27,6 +27,17 @@ struct Fixture {
     stop: Arc<AtomicBool>,
     thread: Option<std::thread::JoinHandle<()>>,
 }
+fn fixture_bin(root: &std::path::Path, base: &str, args: &[&str]) -> std::process::Output {
+    std::process::Command::new(env!("CARGO_BIN_EXE_imagegen"))
+        .args(args)
+        .current_dir(root)
+        .env("IMAGEGEN_CONFIG_DIR", root.join("config"))
+        .env("APIMART_API_BASE", base)
+        .env("APIMART_API_KEY", "fake-key")
+        .env_remove("APIMART_IMAGE_MODEL")
+        .output()
+        .expect("run binary")
+}
 impl Fixture {
     fn new() -> Self {
         let server = Server::http("127.0.0.1:0").unwrap();
@@ -310,4 +321,43 @@ fn auth_check_is_read_only_and_classifies_failures() {
         .to_string();
     assert!(error.contains("network"), "{error}");
     assert!(!error.contains("fixture-key"));
+}
+
+#[test]
+fn cli_uses_custom_api_base_end_to_end() {
+    let f = Fixture::new();
+    let t = tempfile::tempdir().unwrap();
+    let out = t.path().join("custom-base.webp");
+    let o = fixture_bin(
+        t.path(),
+        &f.base,
+        &[
+            "generate",
+            "--prompt",
+            "endpoint check",
+            "--out",
+            out.to_str().unwrap(),
+            "--poll-interval",
+            "1",
+            "--timeout",
+            "10",
+        ],
+    );
+    assert!(
+        o.status.success(),
+        "stdout={} stderr={}",
+        String::from_utf8_lossy(&o.stdout),
+        String::from_utf8_lossy(&o.stderr)
+    );
+    let payload: serde_json::Value = serde_json::from_slice(&o.stdout).unwrap();
+    assert_eq!(payload["task_id"], "test-task");
+    let saved = payload["outputs"][0].as_str().unwrap();
+    assert!(std::path::Path::new(saved).exists(), "missing {saved}");
+    let calls = f.calls.lock().unwrap();
+    assert!(
+        calls.iter().any(|c| c.path == "/v1/images/generations"),
+        "submission did not reach the custom endpoint: {:?}",
+        calls.iter().map(|c| c.path.clone()).collect::<Vec<_>>()
+    );
+    assert!(calls.iter().any(|c| c.path == "/v1/tasks/test-task"));
 }

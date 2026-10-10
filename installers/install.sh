@@ -1,8 +1,13 @@
 #!/bin/sh
 # Install prebuilt imagegen without Python, Node, Rust, or root privileges.
 set -eu
-version=${IMAGEGEN_VERSION:-v2.0.1}
-case "$version" in v[0-9]*.[0-9]*.[0-9]*) ;; *) echo 'Invalid IMAGEGEN_VERSION' >&2; exit 1 ;; esac
+version=${IMAGEGEN_VERSION:-latest}
+if [ "$version" = latest ]; then
+  base=https://github.com/okooo5km/imagegen/releases/latest/download
+else
+  case "$version" in v[0-9]*.[0-9]*.[0-9]*) ;; *) echo 'Invalid IMAGEGEN_VERSION' >&2; exit 1 ;; esac
+  base="https://github.com/okooo5km/imagegen/releases/download/$version"
+fi
 os=$(uname -s)
 arch=$(uname -m)
 case "$os:$arch" in
@@ -13,7 +18,6 @@ case "$os:$arch" in
   *) echo "Unsupported platform: $os $arch. See GitHub releases." >&2; exit 1 ;;
 esac
 archive="imagegen-$target.tar.gz"
-base="https://github.com/okooo5km/imagegen/releases/download/$version"
 bin=${IMAGEGEN_INSTALL_DIR:-"$HOME/.local/bin"}
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM

@@ -8,10 +8,14 @@ Users may install only the Skill. On first invocation, the agent checks the CLI 
 
 Install into the environment where the agent runs commands. A sandbox/container installation does not install onto the user's desktop and may disappear when the environment resets. If that environment cannot download or execute the binary, explain the limitation rather than claiming the Skill is ready. Existing CLI installations are reused; a missing PATH entry alone is not a reason to reinstall. For an override, use `IMAGEGEN_INSTALL_DIR` consistently in the installer and subsequent absolute executable path.
 
+### Keep the CLI current
+
+Existing installations are upgraded, not reused: run `imagegen --version` before use, compare it against the latest release listed at `https://github.com/okooo5km/imagegen/releases/latest`, and re-run the platform installer when it is older. The installer always downloads from `releases/latest` and replaces the binary in place, so re-running it is the supported upgrade path; it never touches the config or API key. Newer releases add models, endpoint settings and flags that this Skill documents, so an outdated binary can reject them. Report the installed version when an update is not possible, and verify with `--version` after upgrading.
+
 ## macOS / Linux
 
 ```sh
-curl --proto '=https' --tlsv1.2 -fLsS https://github.com/okooo5km/imagegen/releases/download/v2.0.1/install.sh -o /tmp/imagegen-install.sh
+curl --proto '=https' --tlsv1.2 -fLsS https://github.com/okooo5km/imagegen/releases/latest/download/install.sh -o /tmp/imagegen-install.sh
 sh /tmp/imagegen-install.sh
 export PATH="$HOME/.local/bin:$PATH"
 imagegen --version
@@ -21,26 +25,69 @@ The installer uses system curl, tar and sha256sum (Linux) or shasum (macOS), ver
 
 ## Windows PowerShell
 
+Use Windows PowerShell 5.1 or PowerShell 7 with the native Windows binary; WSL is not required. If the host executes in CMD or Git Bash, launch PowerShell for these examples instead of mixing shell syntax. If it executes in WSL, follow the Linux instructions and use Linux paths and configuration.
+
 ```powershell
-Invoke-WebRequest https://github.com/okooo5km/imagegen/releases/download/v2.0.1/install.ps1 -OutFile "$env:TEMP\imagegen-install.ps1"
+Invoke-WebRequest -UseBasicParsing https://github.com/okooo5km/imagegen/releases/latest/download/install.ps1 -OutFile "$env:TEMP\imagegen-install.ps1"
 powershell -NoProfile -ExecutionPolicy Bypass -File "$env:TEMP\imagegen-install.ps1"
-$env:Path = "$env:LOCALAPPDATA\imagegen\bin;$env:Path"
-imagegen --version
+if ($LASTEXITCODE -ne 0) { throw 'imagegen installation failed' }
+$bin = if ($env:IMAGEGEN_INSTALL_DIR) { $env:IMAGEGEN_INSTALL_DIR } else { Join-Path $env:LOCALAPPDATA 'imagegen\bin' }
+$env:Path = "$bin;$env:Path"
+$exe = Join-Path $bin 'imagegen.exe'
+& $exe --version
+if ($LASTEXITCODE -ne 0) { throw 'imagegen could not run' }
+& $exe doctor
+if ($LASTEXITCODE -ne 0) { throw 'imagegen doctor failed' }
 ```
 
 The installer uses built-in PowerShell download, SHA-256 and ZIP support, installs to `%LOCALAPPDATA%\imagegen\bin`, and adds this directory to the user PATH. The explicit assignment above updates the current terminal too. No administrator privilege is required. Windows binaries are not Authenticode signed; organization execution policies remain authoritative.
+
+## Mainland China endpoints
+
+The default API endpoint is `https://api.apimart.ai`, which is not reachable from mainland China without a proxy (TCP connections time out or reset). APIMart publishes three mainland-reachable entry points serving the same backend and API: `https://apib.ai`, `https://aiuxu.com`, `https://aishuch.com`. Set one to avoid a proxy:
+
+```sh
+imagegen config set api_base https://apib.ai
+imagegen doctor
+```
+
+Precedence is `APIMART_API_BASE` > saved `api_base` > `https://api.apimart.ai`. All commands (generate, edit, batch, fetch, auth check, models --live, prices) honor it. The endpoint override does not redirect where result images are downloaded from; those URLs come from the response. See [configuration.md](configuration.md#api-endpoint).
+
+### Existing installations and paths
+
+Use `Get-Command imagegen -CommandType Application -ErrorAction SilentlyContinue` to resolve an executable on PATH. If absent, resolve `$bin` and `$exe` as above and check `Test-Path -LiteralPath $exe` before installing. A quoted executable path needs the call operator: `& $exe --version`. Keep using that path if the agent starts a fresh shell for each command; a previous shell's PATH assignment may not persist.
+
+`%LOCALAPPDATA%` and `%APPDATA%` are directory notation/CMD syntax; in PowerShell expand them as `$env:LOCALAPPDATA` and `$env:APPDATA`. Pass absolute paths for inputs outside the current project. In JSONL, escape Windows backslashes (`"C:\\Users\\Alice\\Pictures\\reference.png"`) or use forward slashes (`"C:/Users/Alice/Pictures/reference.png"`). Shell quoting does not replace JSON escaping.
+
+### UTF-8 prompts and batches
+
+Run this from the project directory, using the resolved `$exe` above:
+
+```powershell
+@'
+一只陶瓷茶壶，柔和的摄影棚光线。
+保留表面的中文文字。
+'@ | Set-Content -LiteralPath '.\prompt.txt' -Encoding UTF8
+
+& $exe generate --prompt-file '.\prompt.txt' --out '.\output\teapot.png' --dry-run
+if ($LASTEXITCODE -ne 0) { throw 'Prompt validation failed' }
+```
+
+Remove `--dry-run` for the requested generation after authentication is ready. A single-quoted here-string preserves literal quotes, dollar signs and backticks; its closing `'@` must start at the beginning of a line. An agent file-writing tool may also write UTF-8 directly. Use the same explicit encoding for `jobs.jsonl` and validate it with `batch --input jobs.jsonl --out-dir output/images --dry-run`.
+
+Do not use bare `>` or `Out-File` to create these text inputs in Windows PowerShell 5.1: they default to UTF-16LE. `Set-Content -Encoding UTF8` works in both 5.1 (UTF-8 with BOM) and 7 (UTF-8 without BOM); the CLI accepts both, including CRLF. Check `$LASTEXITCODE` immediately after native CLI calls; `$ErrorActionPreference = 'Stop'` alone does not reliably stop a script on a native command's nonzero exit.
 
 ## Alternatives
 
 Download an archive plus its `.sha256` from [GitHub Releases](https://github.com/okooo5km/imagegen/releases/latest), verify the checksum, extract `imagegen`/`imagegen.exe`, and put it in a directory on PATH. Offline deployment can use the same installers with `IMAGEGEN_ARCHIVE_DIR` pointing to a directory holding both files.
 
-Installer overrides: `IMAGEGEN_INSTALL_DIR`, `IMAGEGEN_VERSION` (default v2.0.1), `IMAGEGEN_ARCHIVE_DIR`. Windows additionally supports `IMAGEGEN_NO_MODIFY_PATH=1`. Do not use a different version's checksum.
+Installer overrides: `IMAGEGEN_INSTALL_DIR`, `IMAGEGEN_VERSION` (defaults to the latest release; pin a tag to reproduce an exact version), `IMAGEGEN_ARCHIVE_DIR`. Windows additionally supports `IMAGEGEN_NO_MODIFY_PATH=1`. Do not use a different version's checksum.
 
-For developers with Rust 1.88+: `cargo install --git https://github.com/okooo5km/imagegen --tag v2.0.1 --locked`. This is optional; normal users should use a release binary.
+For developers with Rust 1.88+: `cargo install --git https://github.com/okooo5km/imagegen --tag v2.1.0 --locked`. This is optional; normal users should use a release binary.
 
 ## API key
 
-Register at [APIMART](https://apimart.ai), create a key on the [API keys page](https://apimart.ai/keys), and ensure the account has a usable balance. The author's referral link is pending approval; use the official website for now.
+Register at [APIMART](https://apimart.ai/register?aff=LEBeCc), create a key on the [API keys page](https://apimart.ai/keys), and ensure the account has a usable balance.
 
 ```text
 imagegen auth set

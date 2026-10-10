@@ -13,7 +13,7 @@ use std::{
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
-pub const BASE: &str = "https://api.apimart.ai";
+pub const BASE: &str = crate::config::DEFAULT_API_BASE;
 pub const MAX_UPLOAD: u64 = 20 * 1024 * 1024;
 const MAX_DOWNLOAD: u64 = 100 * 1024 * 1024;
 #[derive(Clone)]
@@ -81,7 +81,7 @@ impl Api {
                 if error.is_timeout() {
                     anyhow::anyhow!("Authentication check timed out. Keep your key and retry later.")
                 } else {
-                    anyhow::anyhow!("Authentication check could not reach APIMart. Check your network; key validity is unknown.")
+                    anyhow::anyhow!("Authentication check could not reach APIMart. Check the endpoint and network; key validity is unknown.")
                 }
             })?;
         match response.status().as_u16() {

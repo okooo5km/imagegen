@@ -8,12 +8,20 @@ use std::{
 };
 
 pub const DEFAULT_MODEL: &str = "gpt-image-2.5-flare";
-pub const SIGNUP: &str = "https://apimart.ai";
+pub const SIGNUP: &str = "https://apimart.ai/register?aff=LEBeCc";
+pub const DEFAULT_API_BASE: &str = "https://api.apimart.ai";
+/// Mainland-China-reachable entry points published by APIMart. Same backend as the main site.
+pub const BACKUP_API_BASES: &[&str] = &[
+    "https://apib.ai",
+    "https://aiuxu.com",
+    "https://aishuch.com",
+];
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Defaults {
     pub model: Option<String>,
+    pub api_base: Option<String>,
     pub aspect_ratio: Option<String>,
     pub size: Option<String>,
     pub resolution: Option<String>,
@@ -79,6 +87,37 @@ pub fn expand(path: &Path) -> Result<PathBuf> {
     }
     Ok(path.to_path_buf())
 }
+pub fn validate_api_base(base: &str) -> Result<()> {
+    let url = reqwest::Url::parse(base).context("api_base must be an absolute URL")?;
+    if !matches!(url.scheme(), "http" | "https") {
+        bail!("api_base must use http:// or https://");
+    }
+    if url.host_str().is_none() {
+        bail!("api_base needs a host");
+    }
+    if url.query().is_some() || url.fragment().is_some() {
+        bail!("api_base cannot contain a query or fragment");
+    }
+    Ok(())
+}
+/// Environment override, then the saved default, then the main endpoint.
+pub fn resolve_api_base(dir: &Path) -> Result<String> {
+    if let Some(value) = env::var_os("APIMART_API_BASE").filter(|s| !s.is_empty()) {
+        let base = value
+            .to_string_lossy()
+            .trim()
+            .trim_end_matches('/')
+            .to_owned();
+        validate_api_base(&base)?;
+        return Ok(base);
+    }
+    // A malformed config must not block key management; normal commands validate it separately.
+    let saved = Config::load(dir)
+        .ok()
+        .and_then(|c| c.defaults.api_base)
+        .unwrap_or_else(|| DEFAULT_API_BASE.to_owned());
+    Ok(saved.trim_end_matches('/').to_owned())
+}
 pub fn read_text(path: &Path) -> Result<String> {
     Ok(fs::read_to_string(path)
         .with_context(|| format!("Cannot read {}", path.display()))?
@@ -136,6 +175,9 @@ impl Config {
         let d = &self.defaults;
         if let Some(model) = &d.model {
             crate::models::validate_model(model)?;
+        }
+        if let Some(base) = &d.api_base {
+            validate_api_base(base)?;
         }
         if let Some(ratio) = &d.aspect_ratio {
             crate::models::validate_ratio(ratio)?;

@@ -17,7 +17,7 @@
 ### macOS / Linux
 
 ```sh
-curl --proto '=https' --tlsv1.2 -fLsS https://github.com/okooo5km/imagegen/releases/download/v2.0.1/install.sh -o /tmp/imagegen-install.sh
+curl --proto '=https' --tlsv1.2 -fLsS https://github.com/okooo5km/imagegen/releases/latest/download/install.sh -o /tmp/imagegen-install.sh
 sh /tmp/imagegen-install.sh
 export PATH="$HOME/.local/bin:$PATH"
 imagegen --version
@@ -28,7 +28,7 @@ imagegen --version
 ### Windows PowerShell
 
 ```powershell
-Invoke-WebRequest https://github.com/okooo5km/imagegen/releases/download/v2.0.1/install.ps1 -OutFile "$env:TEMP\imagegen-install.ps1"
+Invoke-WebRequest https://github.com/okooo5km/imagegen/releases/latest/download/install.ps1 -OutFile "$env:TEMP\imagegen-install.ps1"
 powershell -NoProfile -ExecutionPolicy Bypass -File "$env:TEMP\imagegen-install.ps1"
 $env:Path = "$env:LOCALAPPDATA\imagegen\bin;$env:Path"
 imagegen --version
@@ -85,7 +85,7 @@ CLI 安装在 Agent 实际运行命令的环境中。云端或沙盒安装不会
 
 ## 3. 配置密钥
 
-在 [APIMART 官网](https://apimart.ai) 注册，在 [API Key 页面](https://apimart.ai/keys) 创建密钥，并确保账号有可用额度。作者的邀请链接申请中，当前先使用官网。
+在 [APIMART](https://apimart.ai/register?aff=LEBeCc) 注册账号，在 [API Key 页面](https://apimart.ai/keys) 创建密钥，并确保账号有可用额度。
 
 在自己的终端运行：
 
@@ -149,7 +149,16 @@ imagegen config reset
 
 `reset` 清空默认选项，但保留密钥。命令行参数覆盖本地默认值；显式 `--aspect-ratio` 或 `--resolution` 会覆盖保存的精确尺寸。显式 `--size` 不与比例/分辨率同时使用。
 
-还支持保存 `background`、`concurrency`、`timeout`、`poll_interval`。内置默认值是 Flare、1:1、1K、medium、1 张、并发 2。模型优先级为 `--model` > `APIMART_IMAGE_MODEL` > 本地配置 > Flare。`auto` 不代表自动换模型。[完整配置规则](imagegen/references/configuration.md)
+还支持保存 `background`、`concurrency`、`timeout`、`poll_interval`。内置默认值是 Flare、1:1、1K、medium、1 张、并发 2。模型优先级为 `--model` > `APIMART_IMAGE_MODEL` > 本地配置 > Flare。`auto` 不代表自动换模型。
+
+API 默认端点 `https://api.apimart.ai` 无法从中国大陆直连（TCP 超时或被重置）。APIMart 提供三个大陆可达的备用入口，指向同一套后端：`https://apib.ai`、`https://aiuxu.com`、`https://aishuch.com`。设置任一个即可直连，无需代理：
+
+```sh
+imagegen config set api_base https://apib.ai
+imagegen doctor
+```
+
+优先级为 `APIMART_API_BASE` > 本地 `api_base` > 官方主站。`doctor` 与 `config show` 会显示实际使用的端点。[完整配置规则](imagegen/references/configuration.md)
 
 ## 生图、编辑、透明背景
 

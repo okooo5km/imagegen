@@ -34,6 +34,7 @@ poll_interval = 4
 | Setting | Accepted values | Built-in behavior |
 | --- | --- | --- |
 | model | Bundled runnable model ID | gpt-image-2.5-flare |
+| api_base | Absolute http(s) endpoint | https://api.apimart.ai |
 | aspect_ratio | auto or one of the 15 documented ratios | 1:1 for generation |
 | size | auto or valid WIDTHxHEIGHT | unset |
 | resolution | 1k, 2k, 4k | 1k |
@@ -46,6 +47,20 @@ poll_interval = 4
 | poll_interval | 1–60 seconds | 4 |
 
 CLI parameters override saved defaults. Model precedence is explicit `--model` > `APIMART_IMAGE_MODEL` > saved model > built-in Flare. `auto` uses the same precedence, never a fallback sequence. Config files do not contain secrets.
+
+## API endpoint
+
+Every command talks to `https://api.apimart.ai` unless an endpoint override is set. Precedence is `APIMART_API_BASE` > saved `api_base` > the built-in main endpoint. `imagegen doctor` and `imagegen config show` (`effective_api_base`) report the endpoint actually in use.
+
+```sh
+imagegen config set api_base https://apib.ai
+imagegen config unset api_base
+APIMART_API_BASE=https://aiuxu.com imagegen doctor
+```
+
+Use this when the main endpoint is unreachable, most often from mainland China. APIMart publishes three mainland-reachable entry points that serve the same API from the same backend: `https://apib.ai`, `https://aiuxu.com`, `https://aishuch.com`. They answer `https://{host}/v1/...` exactly like the main site; the `api.`-prefixed variants work too. The override must be an absolute `http(s)` URL without a query or fragment; the trailing slash is stripped. Registering and creating a key is a web action, not a CLI action, and the recommended link already carries the referral code.
+
+The endpoint override does not change where generated images are downloaded from: those URLs come from the API response, so keep image downloads in mind if a response points at an unreachable host. Prompt, JSONL, and other local files are unaffected.
 
 ## Geometry rules
 

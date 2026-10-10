@@ -206,6 +206,9 @@ fn model_env() -> Option<String> {
         .ok()
         .filter(|s| !s.is_empty())
 }
+fn api_for(dir: &Path) -> Result<Api> {
+    Api::with_base(&config::resolve_api_base(dir)?)
+}
 fn from_args(args: &Generate) -> Result<Input> {
     Ok(Input {
         prompt: match &args.prompt_file {
@@ -250,7 +253,7 @@ fn run_image(args: &Generate, edit: bool, dir: &Path, conf: &Config) -> Result<(
     let api = if args.dry_run {
         None
     } else {
-        Some(Api::new()?)
+        Some(api_for(dir)?)
     };
     emit(&jobs::execute(
         api.as_ref(),
@@ -275,7 +278,7 @@ fn run_fetch(args: &Fetch, dir: &Path, conf: &Config) -> Result<()> {
         )?
     };
     jobs::preflight(&paths, args.output.force, true)?;
-    let api = Api::new()?;
+    let api = api_for(dir)?;
     let key = config::require_key(dir)?;
     let opts = options(&args.output, false, dir, conf);
     let data = api.poll(&args.task_id, &key, opts.timeout, opts.interval)?;
@@ -362,7 +365,7 @@ fn run_batch(args: &Batch, dir: &Path, conf: &Config) -> Result<()> {
         );
     }
     config::require_key(dir)?;
-    let api = Api::new()?;
+    let api = api_for(dir)?;
     let next = AtomicUsize::new(0);
     let failures = AtomicUsize::new(0);
     let prepared = Arc::new(prepared);
@@ -420,7 +423,7 @@ fn print_price(info: &Value) {
 }
 fn run_catalog(live: bool, prices: bool, json_output: bool, dir: &Path) -> Result<()> {
     let api = if live || prices {
-        Some(Api::new()?)
+        Some(api_for(dir)?)
     } else {
         None
     };
@@ -565,7 +568,7 @@ fn run() -> Result<()> {
             command: AuthCommand::Check,
         } => {
             let (key, _) = config::resolve_key(&dir)?.with_context(|| format!("Key missing. Register at {}; get a key at https://apimart.ai/keys; run imagegen auth set.", config::SIGNUP))?;
-            Api::new()?.check_auth(&key)?;
+            api_for(&dir)?.check_auth(&key)?;
             println!(
                 "Authentication verified: model-list access allowed. No image submitted. Balance and generation permissions are not verified."
             );
@@ -596,7 +599,7 @@ fn run() -> Result<()> {
                 .or(model_env())
                 .or(conf.defaults.model.clone())
                 .unwrap_or(config::DEFAULT_MODEL.into());
-            let info = Api::new()?.pricing(&model)?;
+            let info = api_for(&dir)?.pricing(&model)?;
             if as_json {
                 emit(&info)
             } else {
@@ -607,7 +610,7 @@ fn run() -> Result<()> {
         Command::Config {
             command: ConfigCommand::Show,
         } => emit(
-            &json!({"path":dir.join("config.toml"),"saved":conf,"effective_model":model_env().or(conf.defaults.model.clone()).unwrap_or(config::DEFAULT_MODEL.into()),"built_in_defaults":{"aspect_ratio":"1:1","resolution":"1k","quality":"medium (GPT Image 2.5)","output_format":"png","n":1,"timeout":600,"poll_interval":4,"concurrency":2}}),
+            &json!({"path":dir.join("config.toml"),"effective_api_base":config::resolve_api_base(&dir)?,"saved":conf,"effective_model":model_env().or(conf.defaults.model.clone()).unwrap_or(config::DEFAULT_MODEL.into()),"built_in_defaults":{"aspect_ratio":"1:1","resolution":"1k","quality":"medium (GPT Image 2.5)","output_format":"png","n":1,"timeout":600,"poll_interval":4,"concurrency":2}}),
         ),
         Command::Config {
             command: ConfigCommand::Set { key, value },
@@ -626,7 +629,7 @@ fn run() -> Result<()> {
             Ok(())
         }
         Command::Doctor => emit(
-            &json!({"version":env!("CARGO_PKG_VERSION"),"os":std::env::consts::OS,"arch":std::env::consts::ARCH,"config_dir":dir,"key_configured":config::resolve_key(&dir)?.is_some(),"api":imagegen::api::BASE,"runtime_dependencies":"none"}),
+            &json!({"version":env!("CARGO_PKG_VERSION"),"os":std::env::consts::OS,"arch":std::env::consts::ARCH,"config_dir":dir,"key_configured":config::resolve_key(&dir)?.is_some(),"api":config::resolve_api_base(&dir)?,"runtime_dependencies":"none"}),
         ),
         Command::RemoveChromaKey(args) => run_chroma(&args),
         _ => unreachable!("handled before configuration load"),

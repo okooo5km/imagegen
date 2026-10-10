@@ -15,7 +15,7 @@ By **okooo5km(十里)**. [More skills and the author's YouMind work](https://sin
 macOS / Linux:
 
 ```sh
-curl --proto '=https' --tlsv1.2 -fLsS https://github.com/okooo5km/imagegen/releases/download/v2.0.1/install.sh -o /tmp/imagegen-install.sh
+curl --proto '=https' --tlsv1.2 -fLsS https://github.com/okooo5km/imagegen/releases/latest/download/install.sh -o /tmp/imagegen-install.sh
 sh /tmp/imagegen-install.sh
 export PATH="$HOME/.local/bin:$PATH"
 imagegen --version
@@ -26,7 +26,7 @@ Installs to `~/.local/bin` without sudo. Add the export to your shell profile fo
 Windows PowerShell:
 
 ```powershell
-Invoke-WebRequest https://github.com/okooo5km/imagegen/releases/download/v2.0.1/install.ps1 -OutFile "$env:TEMP\imagegen-install.ps1"
+Invoke-WebRequest https://github.com/okooo5km/imagegen/releases/latest/download/install.ps1 -OutFile "$env:TEMP\imagegen-install.ps1"
 powershell -NoProfile -ExecutionPolicy Bypass -File "$env:TEMP\imagegen-install.ps1"
 $env:Path = "$env:LOCALAPPDATA\imagegen\bin;$env:Path"
 imagegen --version
@@ -60,7 +60,7 @@ This is agent-driven setup on first use, not an install hook triggered by import
 
 ## Configure credentials and defaults
 
-Register at [APIMART](https://apimart.ai), create a key on the [API keys page](https://apimart.ai/keys), and ensure your account has a usable balance. The author's referral link is pending approval; the official website is used meanwhile.
+Register at [APIMART](https://apimart.ai/register?aff=LEBeCc), create a key on the [API keys page](https://apimart.ai/keys), and ensure your account has a usable balance.
 
 ```sh
 imagegen auth set
@@ -89,7 +89,16 @@ imagegen config reset
 
 Saved exact `size` overrides saved ratio/resolution. Explicit `--aspect-ratio` or `--resolution` overrides a saved exact size; explicit `--size` cannot be combined with explicit ratio/resolution. Edits ignore saved shape/exact size to preserve input proportions unless `--use-default-size` or explicit geometry is provided.
 
-Other defaults: `output_format`, `background`, `n`, `concurrency`, `timeout`, `poll_interval`. Built-ins: Flare, 1:1, 1K, medium, one image, two workers. Model precedence: explicit `--model` > `APIMART_IMAGE_MODEL` > saved model > Flare. `auto` never tries several models. Reset retains the API key. [Full configuration and migration](imagegen/references/configuration.md).
+Other defaults: `output_format`, `background`, `n`, `concurrency`, `timeout`, `poll_interval`. Built-ins: Flare, 1:1, 1K, medium, one image, two workers. Model precedence: explicit `--model` > `APIMART_IMAGE_MODEL` > saved model > Flare. `auto` never tries several models. Reset retains the API key.
+
+The default endpoint `https://api.apimart.ai` is not reachable from mainland China without a proxy (TCP times out or resets). APIMart publishes three mainland-reachable entry points serving the same backend: `https://apib.ai`, `https://aiuxu.com`, `https://aishuch.com`. Set one to connect directly:
+
+```sh
+imagegen config set api_base https://apib.ai
+imagegen doctor
+```
+
+Precedence is `APIMART_API_BASE` > saved `api_base` > the main site. `doctor` and `config show` report the endpoint in use. [Full configuration and migration](imagegen/references/configuration.md).
 
 ## Generate and edit
 
@@ -155,6 +164,6 @@ cargo build --release --locked
 
 CI builds/tests on six native OS/architecture combinations, packages the executable, runs the installer and installed CLI, and rejects deliberately corrupt archives. It also checks the minimum compiler, lints and dependency advisories. CI uses local HTTP fixtures and no paid API calls. [Portability decisions](docs/portability.md).
 
-v1's Python implementation remains in history; v2 ships only the Rust CLI. Old default-model JSON and key locations remain readable; new config writes use TOML. Developers can install from source with `cargo install --git https://github.com/okooo5km/imagegen --tag v2.0.1 --locked`.
+v1's Python implementation remains in history; v2 ships only the Rust CLI. Old default-model JSON and key locations remain readable; new config writes use TOML. Developers can install from source with `cargo install --git https://github.com/okooo5km/imagegen --tag v2.1.0 --locked`.
 
 Apache-2.0; see [LICENSE](LICENSE) and [NOTICE](NOTICE). Independent community project, not affiliated with OpenAI, APIMART or YouMind. Model contributions should include official API sources and behavioral tests. Remove secrets and private references from public reports.

@@ -1,7 +1,7 @@
 # Install prebuilt imagegen for Windows x64/ARM64 without language runtimes.
 $ErrorActionPreference = 'Stop'
-$version = if ($env:IMAGEGEN_VERSION) { $env:IMAGEGEN_VERSION } else { 'v2.0.1' }
-if ($version -notmatch '^v\d+\.\d+\.\d+([-.][A-Za-z0-9.-]+)?$') { throw 'Invalid IMAGEGEN_VERSION' }
+$version = if ($env:IMAGEGEN_VERSION) { $env:IMAGEGEN_VERSION } else { 'latest' }
+if ($version -ne 'latest' -and $version -notmatch '^v\d+\.\d+\.\d+([-.][A-Za-z0-9.-]+)?$') { throw 'Invalid IMAGEGEN_VERSION' }
 $arch = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString()
 $target = switch ($arch) {
     'X64' { 'x86_64-pc-windows-msvc' }
@@ -9,7 +9,11 @@ $target = switch ($arch) {
     default { throw "Unsupported architecture: $arch" }
 }
 $archive = "imagegen-$target.zip"
-$base = "https://github.com/okooo5km/imagegen/releases/download/$version"
+$base = if ($version -eq 'latest') {
+    'https://github.com/okooo5km/imagegen/releases/latest/download'
+} else {
+    "https://github.com/okooo5km/imagegen/releases/download/$version"
+}
 $bin = if ($env:IMAGEGEN_INSTALL_DIR) { $env:IMAGEGEN_INSTALL_DIR } else { Join-Path $env:LOCALAPPDATA 'imagegen\bin' }
 $work = Join-Path ([System.IO.Path]::GetTempPath()) ([System.Guid]::NewGuid().ToString())
 New-Item -ItemType Directory -Path $work | Out-Null

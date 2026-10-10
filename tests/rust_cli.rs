@@ -15,6 +15,18 @@ fn cli(root: &Path, args: &[&str]) -> Output {
         .env("IMAGEGEN_CONFIG_DIR", root.join("config"))
         .env_remove("APIMART_API_KEY")
         .env_remove("APIMART_IMAGE_MODEL")
+        .env_remove("APIMART_API_BASE")
+        .output()
+        .expect("run binary")
+}
+fn cli_with_base(root: &Path, args: &[&str], base: &str) -> Output {
+    Command::new(env!("CARGO_BIN_EXE_imagegen"))
+        .args(args)
+        .current_dir(root)
+        .env("IMAGEGEN_CONFIG_DIR", root.join("config"))
+        .env("APIMART_API_BASE", base)
+        .env_remove("APIMART_API_KEY")
+        .env_remove("APIMART_IMAGE_MODEL")
         .output()
         .expect("run binary")
 }
@@ -166,6 +178,65 @@ fn no_key_and_noninteractive_auth_are_actionable() {
     let online = cli(t.path(), &["auth", "check"]);
     assert!(!online.status.success());
     assert!(String::from_utf8_lossy(&online.stderr).contains("imagegen auth set"));
+}
+#[test]
+fn api_base_env_overrides_everything_and_is_reported() {
+    let t = tempfile::tempdir().unwrap();
+    let base = "https://apib.ai";
+    let o = cli_with_base(t.path(), &["doctor"], base);
+    assert!(o.status.success());
+    let j: Value = serde_json::from_slice(&o.stdout).unwrap();
+    assert_eq!(j["api"], base);
+
+    let o = cli_with_base(t.path(), &["config", "show"], base);
+    let j: Value = serde_json::from_slice(&o.stdout).unwrap();
+    assert_eq!(j["effective_api_base"], base);
+
+    // A saved default plus an env override: env wins.
+    ok(
+        t.path(),
+        &["config", "set", "api_base", "https://aishuch.com"],
+    );
+    let o = cli_with_base(t.path(), &["doctor"], base);
+    let j: Value = serde_json::from_slice(&o.stdout).unwrap();
+    assert_eq!(j["api"], base);
+}
+#[test]
+fn api_base_saved_default_is_used_when_env_absent() {
+    let t = tempfile::tempdir().unwrap();
+    ok(
+        t.path(),
+        &["config", "set", "api_base", "https://aiuxu.com"],
+    );
+    let o = ok(t.path(), &["doctor"]);
+    let j: Value = serde_json::from_slice(&o.stdout).unwrap();
+    assert_eq!(j["api"], "https://aiuxu.com");
+    let o = ok(t.path(), &["config", "show"]);
+    let j: Value = serde_json::from_slice(&o.stdout).unwrap();
+    assert_eq!(j["saved"]["defaults"]["api_base"], "https://aiuxu.com");
+    assert_eq!(j["effective_api_base"], "https://aiuxu.com");
+}
+#[test]
+fn invalid_api_base_is_rejected() {
+    let t = tempfile::tempdir().unwrap();
+    for bad in [
+        "apib.ai",
+        "ftp://apib.ai",
+        "https://apib.ai?x=1",
+        "https://",
+    ] {
+        assert!(
+            !cli(t.path(), &["config", "set", "api_base", bad])
+                .status
+                .success(),
+            "accepted {bad}"
+        );
+    }
+    // Trailing slash is normalized away, not rejected.
+    ok(t.path(), &["config", "set", "api_base", "https://apib.ai/"]);
+    let o = ok(t.path(), &["doctor"]);
+    let j: Value = serde_json::from_slice(&o.stdout).unwrap();
+    assert_eq!(j["api"], "https://apib.ai");
 }
 #[test]
 fn exact_sizes_are_validated() {

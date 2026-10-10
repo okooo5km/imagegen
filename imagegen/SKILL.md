@@ -1,29 +1,39 @@
 ---
 name: imagegen
-description: Generate and edit raster images with the imagegen CLI through APIMart, manage local generation defaults, and compare available image models and prices. Use for image creation, reference-based edits, transparency or APIMart model selection; prefer existing vector or code assets for edits native to those formats.
+description: Generate and edit raster images on macOS, Linux and Windows with the imagegen CLI through APIMart, manage local generation defaults, and compare available image models and prices. Use for image creation, reference-based edits, transparency or APIMart model selection; prefer existing vector or code assets for edits native to those formats.
 license: Apache-2.0; see LICENSE.txt
 metadata:
   author: okooo5km(十里)
-  version: "2.0.1"
+  version: "2.1.0"
 ---
 
 # Imagegen
 
 Use the native Rust **imagegen** CLI. It does not require Python, Node.js, Rust, an SDK or an image-processing runtime on the user's machine. The host must support running local commands and accessing APIMart over HTTPS.
 
+## Platform and shell
+
+Identify the OS, architecture and shell where commands actually execute before choosing an installer or writing shell commands. Native Windows supports x64/ARM64 without WSL; prefer PowerShell there. In WSL, use the Linux binary and Linux paths/configuration. A Windows desktop does not imply that an agent running in a Linux container or remote host needs the Windows binary.
+
+CLI subcommands and flags are shared across platforms; shell syntax is not. In PowerShell, use `$env:NAME` for environment variables and `& $exe` to invoke a resolved executable path. Do not copy CMD's `%NAME%`, POSIX `export`, heredocs or backslash line continuations into PowerShell. For Windows setup, PATH recovery and UTF-8 prompt/JSONL files, read [references/setup.md](references/setup.md#windows-powershell).
+
 ## Installation and configuration
 
-Check `imagegen --version`. If the command is missing, check the configured `IMAGEGEN_INSTALL_DIR` or the default executable path (`~/.local/bin/imagegen` on macOS/Linux, `%LOCALAPPDATA%\imagegen\bin\imagegen.exe` on Windows) before reinstalling; expand paths for the actual shell. If no executable is installed, carry out the matching prebuilt CLI installation from [references/setup.md](references/setup.md) in the task's execution environment, within the host's permissions. Do not merely give the user installation commands when you can perform this setup. Respect host approval requirements; if execution, downloads or installation are blocked, explain the specific limitation and provide the setup commands instead.
+Check `imagegen --version` before using the CLI. If the command is missing, check the configured `IMAGEGEN_INSTALL_DIR` or the default executable path (`~/.local/bin/imagegen` on macOS/Linux, `%LOCALAPPDATA%\imagegen\bin\imagegen.exe` on Windows) before reinstalling; expand paths for the actual shell. If no executable is installed, carry out the matching prebuilt CLI installation from [references/setup.md](references/setup.md) in the task's execution environment, within the host's permissions. Do not merely give the user installation commands when you can perform this setup. Respect host approval requirements; if execution, downloads or installation are blocked, explain the specific limitation and provide the setup commands instead.
+
+An installed CLI goes stale: new models, settings such as `api_base`, and fixes only exist in newer releases. When an existing installation is present, install the latest release before relying on it — re-running the platform installer replaces the binary in place and verifies SHA-256. The installed version must match the latest release; an older binary can reject flags and settings the current skill documents. If the host blocks the update, tell the user which version is installed, that it may be stale, and give the update commands. Do not claim the CLI is current without a successful `--version` after updating, and do not loop updates when the network is down.
 
 After installation, use the resolved absolute executable path when PATH has not refreshed. Run `--version` and `doctor`, then continue the original task. Do not retry a failing installation repeatedly or claim installation succeeded without running the binary. Installers verify SHA-256 checksums; do not bypass a failed checksum or use the removed Python scripts. Importing this skill alone does not execute an installer.
 
-Run from the user's project directory so relative outputs belong to the project. Quote paths containing spaces. Use `--prompt-file` for multiline or complex prompts.
+Run from the user's project directory so relative outputs belong to the project. Quote paths containing spaces. Use `--prompt-file` for multiline or complex prompts; write prompt and JSONL files as UTF-8 explicitly (BOM and CRLF are accepted, UTF-16 is not). Keep executable, input, output and credential paths in the same execution environment.
 
 For generation, edits, batch submission, task recovery and live model discovery, run `imagegen auth status` to check local key presence. If missing, show the registration/key links and ask the user to run `imagegen auth set` in their own terminal using [references/setup.md](references/setup.md). Never ask for a key in chat. After setup or replacement, run `imagegen auth check`, then resume the original task when verification succeeds. Do not repeatedly verify before every image. On HTTP 401, guide replacement; on 403, explain account/endpoint restrictions; on network errors or rate limits, retain the key and retry later without submitting an image.
 
 Public prices, offline models, local configuration, chroma-key removal and `--dry-run` need no key: complete those tasks without registration prompts. Online verification checks model-list access only, not balance or permission to generate with every model.
 
 Read `imagegen config show` before assuming defaults. The built-in model is **gpt-image-2.5-flare**, 1K, medium quality, one image. Explicit CLI options override saved defaults; `APIMART_IMAGE_MODEL` sits between an explicit model and the saved model. Change persistent defaults only when the user requests it. See [references/configuration.md](references/configuration.md) for size/ratio precedence, supported defaults and migration.
+
+Every command uses `https://api.apimart.ai` unless an endpoint override is set. On connection failure or timeouts, especially from mainland China, do not treat it as a key or balance problem: set `APIMART_API_BASE` (or `imagegen config set api_base`) to one of APIMart's mainland-reachable endpoints (`https://apib.ai`, `https://aiuxu.com`, `https://aishuch.com`) and retry. `imagegen doctor` reports the effective endpoint. See [references/configuration.md](references/configuration.md#api-endpoint).
 
 ## Generate and edit
 

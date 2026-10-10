@@ -51,3 +51,25 @@ fn licenses_travel_with_skill() {
         fs::read(root.join("imagegen/NOTICE")).unwrap()
     );
 }
+
+#[test]
+fn skill_version_matches_the_binary_release() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let manifest = fs::read_to_string(root.join("Cargo.toml")).unwrap();
+    let version = manifest
+        .lines()
+        .find_map(|l| l.strip_prefix("version = "))
+        .map(|v| v.trim().trim_matches('"'))
+        .expect("Cargo.toml version");
+    let skill = fs::read_to_string(root.join("imagegen/SKILL.md")).unwrap();
+    let front = skill.split("---").nth(1).unwrap();
+    let skill_version = front
+        .lines()
+        .find_map(|l| l.strip_prefix("  version: "))
+        .map(|v| v.trim().trim_matches('"'))
+        .expect("SKILL.md metadata.version");
+    assert_eq!(
+        skill_version, version,
+        "SKILL.md metadata.version must track the binary release"
+    );
+}
