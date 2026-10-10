@@ -66,6 +66,8 @@ The installer defaults to the latest release, so re-running it upgrades in place
 
 Register at [APIMART](https://apimart.ai/register?aff=LEBeCc), create a key on the [API keys page](https://apimart.ai/keys), and ensure your account has a usable balance.
 
+If the main site is unreachable from mainland China, register through a backup domain instead — same account system, referral code included: [apib.ai](https://apib.ai/register?aff=LEBeCc) · [aiuxu.com](https://aiuxu.com/register?aff=LEBeCc) · [aishuch.com](https://aishuch.com/register?aff=LEBeCc).
+
 ```sh
 imagegen auth set
 imagegen auth status
@@ -95,7 +97,7 @@ Saved exact `size` overrides saved ratio/resolution. Explicit `--aspect-ratio` o
 
 Other defaults: `output_format`, `background`, `n`, `concurrency`, `timeout`, `poll_interval`. Built-ins: Flare, 1:1, 1K, medium, one image, two workers. Model precedence: explicit `--model` > `APIMART_IMAGE_MODEL` > saved model > Flare. `auto` never tries several models. Reset retains the API key.
 
-The default endpoint `https://api.apimart.ai` is not reachable from mainland China without a proxy (TCP times out or resets). APIMart publishes three mainland-reachable entry points serving the same backend: `https://apib.ai`, `https://aiuxu.com`, `https://aishuch.com`. Set one to connect directly:
+The default endpoint `https://api.apimart.ai` is not reachable from mainland China without a proxy (TCP times out or resets). APIMart publishes three mainland-reachable entry points serving the same backend: [apib.ai](https://apib.ai), [aiuxu.com](https://aiuxu.com), [aishuch.com](https://aishuch.com). Set one to connect directly:
 
 ```sh
 imagegen config set api_base https://apib.ai

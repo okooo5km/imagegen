@@ -44,7 +44,7 @@ The installer uses built-in PowerShell download, SHA-256 and ZIP support, instal
 
 ## Mainland China endpoints
 
-The default API endpoint is `https://api.apimart.ai`, which is not reachable from mainland China without a proxy (TCP connections time out or reset). APIMart publishes three mainland-reachable entry points serving the same backend and API: `https://apib.ai`, `https://aiuxu.com`, `https://aishuch.com`. Set one to avoid a proxy:
+The default API endpoint is `https://api.apimart.ai`, which is not reachable from mainland China without a proxy (TCP connections time out or reset). APIMart publishes three mainland-reachable entry points serving the same backend and API: [apib.ai](https://apib.ai), [aiuxu.com](https://aiuxu.com), [aishuch.com](https://aishuch.com). Set one to avoid a proxy:
 
 ```sh
 imagegen config set api_base https://apib.ai
@@ -88,6 +88,8 @@ For developers with Rust 1.88+: `cargo install --git https://github.com/okooo5km
 ## API key
 
 Register at [APIMART](https://apimart.ai/register?aff=LEBeCc), create a key on the [API keys page](https://apimart.ai/keys), and ensure the account has a usable balance.
+
+When the main site is unreachable (mainland China without a proxy), register through a backup domain instead — same account system, referral code included: [apib.ai](https://apib.ai/register?aff=LEBeCc), [aiuxu.com](https://aiuxu.com/register?aff=LEBeCc), [aishuch.com](https://aishuch.com/register?aff=LEBeCc).
 
 ```text
 imagegen auth set

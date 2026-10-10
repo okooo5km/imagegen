@@ -91,6 +91,8 @@ Linux 使用静态 musl；Windows 静态链接 C 运行库。macOS 包带 ad-hoc
 
 在 [APIMART](https://apimart.ai/register?aff=LEBeCc) 注册账号，在 [API Key 页面](https://apimart.ai/keys) 创建密钥，并确保账号有可用额度。
 
+大陆网络无法打开官网时，用备用域名注册（同一账号体系，邀请码同样生效）：[apib.ai](https://apib.ai/register?aff=LEBeCc) · [aiuxu.com](https://aiuxu.com/register?aff=LEBeCc) · [aishuch.com](https://aishuch.com/register?aff=LEBeCc)。
+
 在自己的终端运行：
 
 ```sh
@@ -155,7 +157,7 @@ imagegen config reset
 
 还支持保存 `background`、`concurrency`、`timeout`、`poll_interval`。内置默认值是 Flare、1:1、1K、medium、1 张、并发 2。模型优先级为 `--model` > `APIMART_IMAGE_MODEL` > 本地配置 > Flare。`auto` 不代表自动换模型。
 
-API 默认端点 `https://api.apimart.ai` 无法从中国大陆直连（TCP 超时或被重置）。APIMart 提供三个大陆可达的备用入口，指向同一套后端：`https://apib.ai`、`https://aiuxu.com`、`https://aishuch.com`。设置任一个即可直连，无需代理：
+API 默认端点 `https://api.apimart.ai` 无法从中国大陆直连（TCP 超时或被重置）。APIMart 提供三个大陆可达的备用入口，指向同一套后端：[apib.ai](https://apib.ai)、[aiuxu.com](https://aiuxu.com)、[aishuch.com](https://aishuch.com)。设置任一个即可直连，无需代理：
 
 ```sh
 imagegen config set api_base https://apib.ai
