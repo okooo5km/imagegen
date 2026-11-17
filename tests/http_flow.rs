@@ -103,7 +103,7 @@ impl Fixture {
                 } else if path.starts_with("/v1/usage") {
                     (
                         200,
-                        json!({"success":true,"data":{"scope":"key","start":1,"end":2,"tz":"Asia/Shanghai","group_by":"model","total":{"amount_usd":0.5,"credits":50,"requests":2,"prompt_tokens":10,"completion_tokens":20},"items":[{"model":"gpt-image-2.5-flare","amount_usd":0.5,"credits":50,"requests":2,"prompt_tokens":10,"completion_tokens":20}]}}),
+                        json!({"success":true,"data":{"scope":"key","start":1792225526,"end":1794903840,"tz":"Asia/Shanghai","group_by":"model","total":{"amount_usd":0.5,"credits":50,"requests":2,"prompt_tokens":10,"completion_tokens":20},"items":[{"model":"gpt-image-2.5-flare","amount_usd":0.5,"credits":50,"requests":2,"prompt_tokens":10,"completion_tokens":20}]}}),
                     )
                 } else if path.starts_with("/v1/logs/requests/") {
                     (
@@ -409,7 +409,7 @@ fn balance_cli_prints_and_calls_expected_endpoints() {
     assert!(o.status.success());
     let out = String::from_utf8_lossy(&o.stdout);
     assert!(
-        out.contains("$12.50") && out.contains("1250 credits"),
+        out.contains("$12.50") && out.contains("1250.00 credits"),
         "{out}"
     );
     assert!(out.contains("$3.25"), "{out}");
@@ -480,7 +480,9 @@ fn usage_sends_query_parameters() {
     assert!(o.status.success(), "{}", String::from_utf8_lossy(&o.stderr));
     let out = String::from_utf8_lossy(&o.stdout);
     assert!(
-        out.contains("Total: $0.50") && out.contains("gpt-image-2.5-flare"),
+        out.contains("Total: $0.50 | 50.00 credits")
+            && out.contains("gpt-image-2.5-flare")
+            && out.contains("2026-10-17 16:25 .. 2026-11-17 16:24 (Asia/Shanghai)"),
         "{out}"
     );
     let path = f.calls.lock().unwrap()[0].path.clone();
@@ -515,7 +517,10 @@ fn logs_default_start_cursor_and_by_id() {
     assert!(o.status.success(), "{}", String::from_utf8_lossy(&o.stderr));
     let out = String::from_utf8_lossy(&o.stdout);
     assert!(
-        out.contains("consume") && out.contains("error") && out.contains("$0.004125"),
+        out.contains("consume")
+            && out.contains("error")
+            && out.contains("$0.0041")
+            && out.contains("2023-11-15 06:13:20"),
         "{out}"
     );
     for bad in [["logs", ".."], ["logs", "a b"]] {

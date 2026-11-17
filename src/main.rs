@@ -544,25 +544,90 @@ fn text(v: &Value) -> String {
         other => other.to_string(),
     }
 }
+/// USD for balances/totals: 2 decimals (rounded first); amounts that would round to
+/// $0.00 show 4 decimals, and non-zero amounts below $0.0001 show `<$0.0001`.
 fn usd(v: &Value) -> String {
     v.as_f64().map_or_else(
         || text(v),
         |n| {
-            let s = format!("{n:.6}");
-            let s = s.trim_end_matches('0');
-            let s = if s.ends_with('.') {
-                format!("{s}00")
+            let sign = if n < 0.0 { "-" } else { "" };
+            let a = n.abs();
+            if a == 0.0 || !a.is_finite() {
+                "$0.00".into()
+            } else if a < 0.0001 {
+                "<$0.0001".into()
+            } else if (a * 100.0).round() >= 1.0 {
+                format!("{sign}${a:.2}")
             } else {
-                s.to_string()
-            };
-            let decimals = s.len() - s.find('.').map_or(s.len(), |i| i + 1);
-            if decimals < 2 {
-                format!("${s}0")
-            } else {
-                format!("${s}")
+                format!("{sign}${a:.4}")
             }
         },
     )
+}
+/// USD for per-request costs: always 4 decimals (`<$0.0001` for non-zero dust).
+fn usd4(v: &Value) -> String {
+    v.as_f64().map_or_else(
+        || text(v),
+        |n| {
+            let a = n.abs();
+            if a == 0.0 || !a.is_finite() {
+                "$0.0000".into()
+            } else if a < 0.0001 {
+                "<$0.0001".into()
+            } else {
+                format!("{}${a:.4}", if n < 0.0 { "-" } else { "" })
+            }
+        },
+    )
+}
+/// Credits: always 2 decimals.
+fn credits(v: &Value) -> String {
+    v.as_f64().map_or_else(|| text(v), |n| format!("{n:.2}"))
+}
+/// Fixed UTC offset in minutes for zones without DST; unknown zones fall back to UTC.
+fn tz_offset(tz: &str) -> Option<(i64, &str)> {
+    let m = match tz {
+        "Asia/Shanghai" | "Asia/Chongqing" | "Asia/Hong_Kong" | "Asia/Macau" | "Asia/Taipei"
+        | "Asia/Singapore" | "Asia/Kuala_Lumpur" | "Asia/Manila" | "Australia/Perth" | "PRC" => 480,
+        "Asia/Tokyo" | "Asia/Seoul" => 540,
+        "Asia/Bangkok" | "Asia/Jakarta" | "Asia/Ho_Chi_Minh" => 420,
+        "Asia/Kolkata" | "Asia/Calcutta" => 330,
+        "Asia/Dubai" => 240,
+        "Asia/Karachi" => 300,
+        "Asia/Dhaka" => 360,
+        _ => return None,
+    };
+    Some((m, tz))
+}
+/// Format unix seconds (0..=253402300799) at a fixed offset; `None` outside that range.
+fn fmt_unix(secs: i64, offset_min: i64, with_secs: bool) -> Option<String> {
+    if !(0..=253_402_300_799).contains(&secs) {
+        return None;
+    }
+    let t = secs.checked_add(offset_min.checked_mul(60)?)?;
+    let days = t.div_euclid(86400);
+    let rem = t.rem_euclid(86400);
+    let z = days.checked_add(719_468)?;
+    let era = z.div_euclid(146_097);
+    let doe = z.rem_euclid(146_097);
+    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146_096) / 365;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = doy - (153 * mp + 2) / 5 + 1;
+    let m = if mp < 10 { mp + 3 } else { mp - 9 };
+    let y = yoe + era * 400 + i64::from(m <= 2);
+    let (h, mi, s) = (rem / 3600, rem % 3600 / 60, rem % 60);
+    Some(if with_secs {
+        format!("{y:04}-{m:02}-{d:02} {h:02}:{mi:02}:{s:02}")
+    } else {
+        format!("{y:04}-{m:02}-{d:02} {h:02}:{mi:02}")
+    })
+}
+/// Unix-second numbers become dates; strings (e.g. RFC3339) and out-of-range values print unchanged.
+fn when(v: &Value, offset_min: i64, with_secs: bool) -> String {
+    v.as_i64()
+        .and_then(|n| fmt_unix(n, offset_min, with_secs))
+        .unwrap_or_else(|| text(v))
 }
 fn run_balance(account: bool, as_json: bool, dir: &Path) -> Result<()> {
     let key = config::require_key(dir)?;
@@ -583,13 +648,13 @@ fn run_balance(account: bool, as_json: bool, dir: &Path) -> Result<()> {
         println!(
             "Remaining ({scope}): {} ({} credits)",
             usd(&data["remain_balance"]),
-            text(&data["remain_credits"])
+            credits(&data["remain_credits"])
         );
     }
     println!(
         "Used ({scope}): {} ({} credits)",
         usd(&data["used_balance"]),
-        text(&data["used_credits"])
+        credits(&data["used_credits"])
     );
     Ok(())
 }
@@ -615,19 +680,25 @@ fn run_usage(args: &UsageArgs, dir: &Path) -> Result<()> {
         return emit(&v);
     }
     let data = v.get("data").filter(|d| d.is_object()).unwrap_or(&v);
+    let (offset, zone) = match data["tz"].as_str() {
+        Some(name) => tz_offset(name).map_or_else(
+            || (0, format!("UTC; tz={name}")),
+            |(o, n)| (o, n.to_string()),
+        ),
+        None => (0, "UTC".to_string()),
+    };
     println!(
-        "Usage ({}) {} .. {} tz={} group_by={}",
+        "Usage ({}) {} .. {} ({zone}) group_by={}",
         text(&data["scope"]),
-        text(&data["start"]),
-        text(&data["end"]),
-        text(&data["tz"]),
+        when(&data["start"], offset, false),
+        when(&data["end"], offset, false),
         text(&data["group_by"])
     );
     let total = &data["total"];
     println!(
         "Total: {} | {} credits | {} requests | {} prompt + {} completion tokens",
         usd(&total["amount_usd"]),
-        text(&total["credits"]),
+        credits(&total["credits"]),
         text(&total["requests"]),
         text(&total["prompt_tokens"]),
         text(&total["completion_tokens"])
@@ -640,7 +711,7 @@ fn run_usage(args: &UsageArgs, dir: &Path) -> Result<()> {
                 text(&item["date"]),
                 text(&item["model"]),
                 usd(&item["amount_usd"]),
-                text(&item["credits"]),
+                credits(&item["credits"]),
                 text(&item["requests"]),
                 text(&item["prompt_tokens"]),
                 text(&item["completion_tokens"])
@@ -653,13 +724,13 @@ fn print_log(r: &Value) {
     println!(
         "{}\t{}\t{}\t{}\t{}\t{}/{}\t{}\t{}ms",
         text(&r["id"]),
-        text(&r["created_at"]),
+        when(&r["created_at"], 480, true),
         text(&r["type"]),
         text(&r["status"]),
         text(&r["model_name"]),
         text(&r["prompt_tokens"]),
         text(&r["completion_tokens"]),
-        usd(&r["cost_usd"]),
+        usd4(&r["cost_usd"]),
         text(&r["latency_ms"])
     );
 }
@@ -693,7 +764,9 @@ fn run_logs(args: &LogsArgs, dir: &Path) -> Result<()> {
             Some(d) if d.is_object() => vec![d],
             _ => vec![&v],
         };
-        println!("id\tcreated_at\ttype\tstatus\tmodel\ttokens in/out\tcost\tlatency");
+        println!(
+            "id\tcreated_at (Asia/Shanghai)\ttype\tstatus\tmodel\ttokens in/out\tcost\tlatency"
+        );
         for r in rows {
             print_log(r);
         }
@@ -730,7 +803,7 @@ fn run_logs(args: &LogsArgs, dir: &Path) -> Result<()> {
     let rows = v["data"]
         .as_array()
         .context("Logs returned no data array")?;
-    println!("id\tcreated_at\ttype\tstatus\tmodel\ttokens in/out\tcost\tlatency");
+    println!("id\tcreated_at (Asia/Shanghai)\ttype\tstatus\tmodel\ttokens in/out\tcost\tlatency");
     for r in rows {
         print_log(r);
     }
@@ -914,5 +987,47 @@ fn main() {
         }
         eprintln!("Error: {err:#}");
         std::process::exit(1);
+    }
+}
+#[cfg(test)]
+mod display_tests {
+    use super::*;
+    use serde_json::json;
+    #[test]
+    fn dates() {
+        assert_eq!(
+            fmt_unix(1_709_208_000, 0, true).unwrap(),
+            "2024-02-29 12:00:00"
+        );
+        assert_eq!(fmt_unix(0, 330, false).unwrap(), "1970-01-01 05:30");
+        assert_eq!(
+            fmt_unix(1_792_225_526, 480, false).unwrap(),
+            "2026-10-17 16:25"
+        );
+        assert!(fmt_unix(-1, 0, true).is_none());
+        assert_eq!(when(&json!(-1), 0, true), "-1");
+        assert_eq!(when(&json!(i64::MAX), 480, true), i64::MAX.to_string());
+        assert_eq!(
+            when(&json!("2026-01-01T00:00:00Z"), 0, true),
+            "2026-01-01T00:00:00Z"
+        );
+    }
+    #[test]
+    fn money() {
+        for (n, want) in [
+            (json!(0.005), "$0.01"),
+            (json!(0.00999), "$0.01"),
+            (json!(0.00499), "$0.0050"),
+            (json!(0.00004), "<$0.0001"),
+            (json!(-0.0), "$0.00"),
+            (json!(-1), "-$1.00"),
+            (json!(12.5), "$12.50"),
+        ] {
+            assert_eq!(usd(&n), want, "{n}");
+        }
+        assert_eq!(usd4(&json!(0.02)), "$0.0200");
+        assert_eq!(usd4(&json!(0.004125)), "$0.0041");
+        assert_eq!(usd4(&json!(0)), "$0.0000");
+        assert_eq!(credits(&json!(13.12374)), "13.12");
     }
 }
