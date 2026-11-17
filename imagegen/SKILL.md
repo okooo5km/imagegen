@@ -4,7 +4,7 @@ description: Generate and edit raster images on macOS, Linux and Windows with th
 license: Apache-2.0; see LICENSE.txt
 metadata:
   author: okooo5km(十里)
-  version: "2.1.0"
+  version: "2.2.0"
 ---
 
 # Imagegen
