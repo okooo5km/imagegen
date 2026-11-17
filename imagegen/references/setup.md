@@ -83,7 +83,7 @@ Download an archive plus its `.sha256` from [GitHub Releases](https://github.com
 
 Installer overrides: `IMAGEGEN_INSTALL_DIR`, `IMAGEGEN_VERSION` (defaults to the latest release; pin a tag to reproduce an exact version), `IMAGEGEN_ARCHIVE_DIR`. Windows additionally supports `IMAGEGEN_NO_MODIFY_PATH=1`. Do not use a different version's checksum.
 
-For developers with Rust 1.88+: `cargo install --git https://github.com/okooo5km/imagegen --tag v2.2.0 --locked`. This is optional; normal users should use a release binary.
+For developers with Rust 1.88+: `cargo install --git https://github.com/okooo5km/imagegen --tag v2.2.1 --locked`. This is optional; normal users should use a release binary.
 
 ## API key
 

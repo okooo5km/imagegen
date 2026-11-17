@@ -170,6 +170,6 @@ cargo build --release --locked
 
 CI builds/tests on six native OS/architecture combinations, packages the executable, runs the installer and installed CLI, and rejects deliberately corrupt archives. It also checks the minimum compiler, lints and dependency advisories. CI uses local HTTP fixtures and no paid API calls. [Portability decisions](docs/portability.md).
 
-v1's Python implementation remains in history; v2 ships only the Rust CLI. Old default-model JSON and key locations remain readable; new config writes use TOML. Developers can install from source with `cargo install --git https://github.com/okooo5km/imagegen --tag v2.2.0 --locked`.
+v1's Python implementation remains in history; v2 ships only the Rust CLI. Old default-model JSON and key locations remain readable; new config writes use TOML. Developers can install from source with `cargo install --git https://github.com/okooo5km/imagegen --tag v2.2.1 --locked`.
 
 Apache-2.0; see [LICENSE](LICENSE) and [NOTICE](NOTICE). Independent community project, not affiliated with OpenAI, APIMART or YouMind. Model contributions should include official API sources and behavioral tests. Remove secrets and private references from public reports.
