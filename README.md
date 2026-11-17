@@ -112,7 +112,7 @@ imagegen doctor
 
 密钥保存在 `apimart.key`，默认参数保存在 `config.toml`。配置写入采用原子替换；Unix 文件权限为 600，Windows 使用用户目录的访问控制。
 
-`auth check` 通过只读模型列表请求验证密钥，不产生生图费用；成功不代表余额充足或所有模型均获授权。401 引导更换密钥，403 检查权限，限流或网络故障保留密钥稍后重试。公开价格、本地配置和 dry-run 无需密钥。
+`auth check` 通过只读模型列表请求验证密钥，不产生生图费用；成功不代表余额充足或所有模型均获授权。查余额与消费用 `imagegen balance [--account]`、`imagegen usage [--start --end --model --group-by --tz --account]`、`imagegen logs [ID] [--token-id]`（只读，均支持 `--json`；logs 覆盖整个账户而非仅当前密钥）。401 引导更换密钥，403 检查权限，限流或网络故障保留密钥稍后重试。公开价格、本地配置和 dry-run 无需密钥。
 
 ## 保存自己的默认参数
 

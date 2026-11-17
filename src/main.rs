@@ -52,6 +52,18 @@ enum Command {
         #[command(subcommand)]
         command: AuthCommand,
     },
+    /// Show remaining and used balance for the API key (or whole account).
+    Balance {
+        /// Whole account instead of the current key.
+        #[arg(long)]
+        account: bool,
+        #[arg(long)]
+        json: bool,
+    },
+    /// Aggregated spend and tokens over a time range (default: last 24h).
+    Usage(UsageArgs),
+    /// Per-request logs, or one record by request/task ID.
+    Logs(LogsArgs),
     #[command(name = "check-key")]
     CheckKey,
     Doctor,
@@ -138,6 +150,54 @@ struct Generate {
     use_default_size: bool,
     #[command(flatten)]
     output: Output,
+}
+#[derive(Args)]
+struct UsageArgs {
+    /// Range start: unix seconds or RFC3339 (max range 31 days).
+    #[arg(long, alias = "since")]
+    start: Option<String>,
+    /// Range end: unix seconds or RFC3339.
+    #[arg(long)]
+    end: Option<String>,
+    /// Comma-separated model IDs (at most 50).
+    #[arg(long)]
+    model: Option<String>,
+    #[arg(long, value_parser = ["none", "model", "date", "model,date"])]
+    group_by: Option<String>,
+    /// IANA time zone for date grouping (server default Asia/Shanghai).
+    #[arg(long)]
+    tz: Option<String>,
+    /// Whole account instead of the current key.
+    #[arg(long)]
+    account: bool,
+    #[arg(long)]
+    json: bool,
+}
+#[derive(Args)]
+struct LogsArgs {
+    /// Request ID or task ID; returns one record.
+    #[arg(conflicts_with_all = ["start", "end", "kind", "model", "limit", "cursor", "token_id"])]
+    id: Option<String>,
+    /// Range start in unix seconds (default: 24 hours ago).
+    #[arg(long, alias = "since")]
+    start: Option<u64>,
+    /// Range end in unix seconds.
+    #[arg(long)]
+    end: Option<u64>,
+    #[arg(long = "type", value_parser = ["all", "consume", "error"])]
+    kind: Option<String>,
+    #[arg(long)]
+    model: Option<String>,
+    #[arg(long, value_parser = clap::value_parser!(u32).range(1..=1000))]
+    limit: Option<u32>,
+    /// Pagination cursor from a previous next_cursor (requires --start).
+    #[arg(long, requires = "start")]
+    cursor: Option<String>,
+    /// Filter by API token (key) ID. Logs cover the whole account, not just this key.
+    #[arg(long)]
+    token_id: Option<String>,
+    #[arg(long)]
+    json: bool,
 }
 #[derive(Args)]
 struct Fetch {
@@ -477,6 +537,212 @@ fn run_catalog(live: bool, prices: bool, json_output: bool, dir: &Path) -> Resul
     }
     Ok(())
 }
+fn text(v: &Value) -> String {
+    match v {
+        Value::String(s) => s.clone(),
+        Value::Null => "-".into(),
+        other => other.to_string(),
+    }
+}
+fn usd(v: &Value) -> String {
+    v.as_f64().map_or_else(
+        || text(v),
+        |n| {
+            let s = format!("{n:.6}");
+            let s = s.trim_end_matches('0');
+            let s = if s.ends_with('.') {
+                format!("{s}00")
+            } else {
+                s.to_string()
+            };
+            let decimals = s.len() - s.find('.').map_or(s.len(), |i| i + 1);
+            if decimals < 2 {
+                format!("${s}0")
+            } else {
+                format!("${s}")
+            }
+        },
+    )
+}
+fn run_balance(account: bool, as_json: bool, dir: &Path) -> Result<()> {
+    let key = config::require_key(dir)?;
+    let path = if account {
+        ["v1", "user", "balance"].as_slice()
+    } else {
+        ["v1", "balance"].as_slice()
+    };
+    let v = api_for(dir)?.account_get(path, &[], &key)?;
+    if as_json {
+        return emit(&v);
+    }
+    let data = v.get("data").filter(|d| d.is_object()).unwrap_or(&v);
+    let scope = if account { "account" } else { "key" };
+    if data["unlimited_quota"] == true {
+        println!("Remaining ({scope}): unlimited");
+    } else {
+        println!(
+            "Remaining ({scope}): {} ({} credits)",
+            usd(&data["remain_balance"]),
+            text(&data["remain_credits"])
+        );
+    }
+    println!(
+        "Used ({scope}): {} ({} credits)",
+        usd(&data["used_balance"]),
+        text(&data["used_credits"])
+    );
+    Ok(())
+}
+fn run_usage(args: &UsageArgs, dir: &Path) -> Result<()> {
+    let key = config::require_key(dir)?;
+    let mut query = Vec::new();
+    for (name, value) in [
+        ("start", &args.start),
+        ("end", &args.end),
+        ("model", &args.model),
+        ("group_by", &args.group_by),
+        ("tz", &args.tz),
+    ] {
+        if let Some(v) = value {
+            query.push((name, v.clone()));
+        }
+    }
+    if args.account {
+        query.push(("scope", "account".into()));
+    }
+    let v = api_for(dir)?.account_get(&["v1", "usage"], &query, &key)?;
+    if args.json {
+        return emit(&v);
+    }
+    let data = v.get("data").filter(|d| d.is_object()).unwrap_or(&v);
+    println!(
+        "Usage ({}) {} .. {} tz={} group_by={}",
+        text(&data["scope"]),
+        text(&data["start"]),
+        text(&data["end"]),
+        text(&data["tz"]),
+        text(&data["group_by"])
+    );
+    let total = &data["total"];
+    println!(
+        "Total: {} | {} credits | {} requests | {} prompt + {} completion tokens",
+        usd(&total["amount_usd"]),
+        text(&total["credits"]),
+        text(&total["requests"]),
+        text(&total["prompt_tokens"]),
+        text(&total["completion_tokens"])
+    );
+    if let Some(items) = data["items"].as_array().filter(|i| !i.is_empty()) {
+        println!("date\tmodel\tusd\tcredits\trequests\tprompt\tcompletion");
+        for item in items {
+            println!(
+                "{}\t{}\t{}\t{}\t{}\t{}\t{}",
+                text(&item["date"]),
+                text(&item["model"]),
+                usd(&item["amount_usd"]),
+                text(&item["credits"]),
+                text(&item["requests"]),
+                text(&item["prompt_tokens"]),
+                text(&item["completion_tokens"])
+            );
+        }
+    }
+    Ok(())
+}
+fn print_log(r: &Value) {
+    println!(
+        "{}\t{}\t{}\t{}\t{}\t{}/{}\t{}\t{}ms",
+        text(&r["id"]),
+        text(&r["created_at"]),
+        text(&r["type"]),
+        text(&r["status"]),
+        text(&r["model_name"]),
+        text(&r["prompt_tokens"]),
+        text(&r["completion_tokens"]),
+        usd(&r["cost_usd"]),
+        text(&r["latency_ms"])
+    );
+}
+fn run_logs(args: &LogsArgs, dir: &Path) -> Result<()> {
+    let key = config::require_key(dir)?;
+    let api = api_for(dir)?;
+    if let Some(id) = &args.id {
+        if id.is_empty()
+            || id == "."
+            || id == ".."
+            || !id
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || "_.:-".contains(c))
+        {
+            bail!("Invalid log ID: use a request or task ID of letters, digits and _ . : - only");
+        }
+        let v = api
+            .account_get(&["v1", "logs", "requests", id], &[], &key)
+            .map_err(|e| {
+                if e.to_string().contains("HTTP 404") {
+                    e.context("Logs appear a few seconds after a request completes, and tasks only once finished; retry later")
+                } else {
+                    e
+                }
+            })?;
+        if args.json {
+            return emit(&v);
+        }
+        let rows: Vec<&Value> = match v.get("data") {
+            Some(Value::Array(a)) => a.iter().collect(),
+            Some(d) if d.is_object() => vec![d],
+            _ => vec![&v],
+        };
+        println!("id\tcreated_at\ttype\tstatus\tmodel\ttokens in/out\tcost\tlatency");
+        for r in rows {
+            print_log(r);
+        }
+        return Ok(());
+    }
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)?
+        .as_secs();
+    let start = args.start.unwrap_or(now.saturating_sub(86400));
+    let end = args.end.unwrap_or(now);
+    let mut query = vec![
+        ("start_timestamp", start.to_string()),
+        ("end_timestamp", end.to_string()),
+    ];
+    if let Some(t) = &args.token_id {
+        query.push(("token_id", t.clone()));
+    }
+    for (name, value) in [
+        ("type", &args.kind),
+        ("model", &args.model),
+        ("cursor", &args.cursor),
+    ] {
+        if let Some(v) = value {
+            query.push((name, v.clone()));
+        }
+    }
+    if let Some(limit) = args.limit {
+        query.push(("limit", limit.to_string()));
+    }
+    let v = api.account_get(&["v1", "logs", "requests"], &query, &key)?;
+    if args.json {
+        return emit(&v);
+    }
+    let rows = v["data"]
+        .as_array()
+        .context("Logs returned no data array")?;
+    println!("id\tcreated_at\ttype\tstatus\tmodel\ttokens in/out\tcost\tlatency");
+    for r in rows {
+        print_log(r);
+    }
+    println!("{} record(s)", rows.len());
+    if v["has_more"] == true {
+        println!(
+            "More: --start {start} --end {end} --cursor {}",
+            text(&v["next_cursor"])
+        );
+    }
+    Ok(())
+}
 fn run_chroma(args: &Chroma) -> Result<()> {
     if !args.tolerance.is_finite()
         || !args.softness.is_finite()
@@ -631,6 +897,9 @@ fn run() -> Result<()> {
         Command::Doctor => emit(
             &json!({"version":env!("CARGO_PKG_VERSION"),"os":std::env::consts::OS,"arch":std::env::consts::ARCH,"config_dir":dir,"key_configured":config::resolve_key(&dir)?.is_some(),"api":config::resolve_api_base(&dir)?,"runtime_dependencies":"none"}),
         ),
+        Command::Balance { account, json } => run_balance(account, json, &dir),
+        Command::Usage(args) => run_usage(&args, &dir),
+        Command::Logs(args) => run_logs(&args, &dir),
         Command::RemoveChromaKey(args) => run_chroma(&args),
         _ => unreachable!("handled before configuration load"),
     }

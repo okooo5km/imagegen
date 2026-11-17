@@ -80,7 +80,7 @@ imagegen config set quality high
 imagegen config show
 ```
 
-`auth check` verifies model-list access with a read-only request and generates no image. Success does not verify balance or all model permissions. Replace rejected credentials on 401; investigate permissions on 403; retain the key on rate limits/network failures. Public prices, local configuration and dry runs need no key.
+`auth check` verifies model-list access with a read-only request and generates no image. Success does not verify balance or all model permissions. Check them with `imagegen balance [--account]`, `imagegen usage [--start --end --model --group-by --tz --account]` and `imagegen logs [ID] [--token-id]` (read-only; all accept `--json`; logs cover the whole account, not just the current key). Replace rejected credentials on 401; investigate permissions on 403; retain the key on rate limits/network failures. Public prices, local configuration and dry runs need no key.
 
 Enter your key in your own terminal using hidden input, never in chat. It is stored separately from defaults and outside the project. CI can provide `APIMART_API_KEY` through a secret environment variable. `auth status` checks local presence, not authentication or balance. Project `.env` files are not loaded automatically.
 
@@ -170,6 +170,6 @@ cargo build --release --locked
 
 CI builds/tests on six native OS/architecture combinations, packages the executable, runs the installer and installed CLI, and rejects deliberately corrupt archives. It also checks the minimum compiler, lints and dependency advisories. CI uses local HTTP fixtures and no paid API calls. [Portability decisions](docs/portability.md).
 
-v1's Python implementation remains in history; v2 ships only the Rust CLI. Old default-model JSON and key locations remain readable; new config writes use TOML. Developers can install from source with `cargo install --git https://github.com/okooo5km/imagegen --tag v2.1.0 --locked`.
+v1's Python implementation remains in history; v2 ships only the Rust CLI. Old default-model JSON and key locations remain readable; new config writes use TOML. Developers can install from source with `cargo install --git https://github.com/okooo5km/imagegen --tag v2.2.0 --locked`.
 
 Apache-2.0; see [LICENSE](LICENSE) and [NOTICE](NOTICE). Independent community project, not affiliated with OpenAI, APIMART or YouMind. Model contributions should include official API sources and behavioral tests. Remove secrets and private references from public reports.

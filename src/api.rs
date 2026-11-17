@@ -123,6 +123,74 @@ impl Api {
         }
         Ok(())
     }
+    /// Read-only authenticated GET for account endpoints (balance, usage, logs).
+    /// Failures never echo response bodies: APIMart returns HTTP 200 with
+    /// `success:false` for an unknown key on some of these routes.
+    pub fn account_get(&self, path: &[&str], query: &[(&str, String)], key: &str) -> Result<Value> {
+        let mut url = Url::parse(&self.base)?;
+        {
+            let mut segments = url
+                .path_segments_mut()
+                .map_err(|_| anyhow::anyhow!("Invalid API URL"))?;
+            segments.pop_if_empty();
+            for part in path {
+                segments.push(part);
+            }
+        }
+        if !query.is_empty() {
+            url.query_pairs_mut()
+                .extend_pairs(query.iter().map(|(k, v)| (*k, v.as_str())));
+        }
+        let response = self
+            .auth
+            .get(url)
+            .bearer_auth(key)
+            .send()
+            .map_err(|error| {
+                if error.is_timeout() {
+                    anyhow::anyhow!("Account request timed out. Keep your key and retry later.")
+                } else {
+                    anyhow::anyhow!(
+                        "Account request could not reach APIMart. Check the endpoint and network."
+                    )
+                }
+            })?;
+        match response.status().as_u16() {
+            401 => bail!(
+                "APIMart rejected the key (HTTP 401). Run imagegen auth set to replace it; check APIMART_API_KEY if set."
+            ),
+            403 => bail!(
+                "APIMart denied this account request (HTTP 403). Check key permissions or account restrictions."
+            ),
+            404 => bail!("APIMart found no such record or endpoint (HTTP 404)."),
+            429 => bail!("APIMart rate limited the request (HTTP 429). Retry later."),
+            code if !(200..300).contains(&code) => {
+                bail!("Account request returned HTTP {code}; retry after checking service status.")
+            }
+            _ => (),
+        }
+        let mut raw = Vec::new();
+        response
+            .take(8 * 1024 * 1024 + 1)
+            .read_to_end(&mut raw)
+            .context("Cannot read account response")?;
+        if raw.len() > 8 * 1024 * 1024 {
+            bail!("Account response exceeds 8 MiB");
+        }
+        let value: Value =
+            serde_json::from_slice(&raw).context("Invalid JSON response from API")?;
+        if !value.is_object() {
+            bail!("Unexpected account response shape");
+        }
+        if value.get("success") == Some(&Value::Bool(false))
+            || value.get("error").is_some_and(|v| !v.is_null())
+        {
+            bail!(
+                "APIMart could not return account data (success=false). The key may be invalid or unknown; run imagegen auth check."
+            );
+        }
+        Ok(value)
+    }
     pub fn upload(&self, reference: &str, key: &str) -> Result<String> {
         validate_reference(reference)?;
         if public_url(reference) {

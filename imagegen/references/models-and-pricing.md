@@ -30,7 +30,7 @@ imagegen config set model gpt-image-2.5-sunburst
 
 For older per-image contracts, JSON preserves the legacy quote with an explicit **payable rate unverified** status. Do not compare those raw numbers as verified account prices. Check the APIMART pricing page/account before choosing on that basis.
 
-The public 2.5 quote observed on 2026-09-12 was USD per million tokens: text input 4, cached text input 1, image input 6.4, cached image input 1.6, image output 24. This is a dated example, not a baked-in tariff. Total cost also depends on actual input/output tokens, quality, dimensions, reference images and count. The CLI returns task-reported `cost` and `usage` when available; it does not invent a per-image total.
+The public 2.5 quote observed on 2026-09-12 was USD per million tokens: text input 4, cached text input 1, image input 6.4, cached image input 1.6, image output 24. This is a dated example, not a baked-in tariff. Total cost also depends on actual input/output tokens, quality, dimensions, reference images and count. The CLI returns task-reported `cost` and `usage` when available; it does not invent a per-image total. Check actual balance and spend with `imagegen balance`, `imagegen usage` and `imagegen logs` ([cli.md](cli.md#account-balance-usage-and-logs)); `auth check` does not verify balance.
 
 ## Authoritative references
 
